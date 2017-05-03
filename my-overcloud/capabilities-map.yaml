@@ -2,12 +2,6 @@
 # repository for deployment using puppet. It groups configuration by topic,
 # describes possible combinations of environments and resource capabilities.
 
-# root_template: identifies repository's root template
-# root_environment: identifies root_environment, this one is special in terms of
-#   order in which the environments are merged before deploying. This one serves as
-#   a base and it's parameters/resource_registry gets overridden by other environments
-#   if used.
-
 # topics:
 # High Level grouping by purpose of environments
 # Attributes:
@@ -38,8 +32,6 @@
 # only when that given environment is used. (resource_type of that environment can
 # be implemented using multiple templates).
 
-root_template: overcloud.yaml
-root_environment: overcloud-resource-registry-puppet.yaml
 topics:
   - title: Base Resources Configuration
     description:
@@ -308,6 +300,11 @@ topics:
         description: >
           Enable various Neutron plugins and backends
         environments:
+          - file: environments/neutron-bgpvpn.yaml
+            title: Neutron BGPVPN Service Plugin
+            description: Enables Neutron BGPVPN Service Plugin
+            requires:
+              - overcloud-resource-registry-puppet.yaml
           - file: environments/neutron-ml2-bigswitch.yaml
             title: BigSwitch Extensions
             description: >
@@ -335,19 +332,9 @@ topics:
             description: Enables Neutron Nuage backend on the controller
             requires:
               - overcloud-resource-registry-puppet.yaml
-          - file: environments/neutron-opencontrail.yaml
-            title: OpenContrail Extensions
-            description: Enables OpenContrail extensions
-            requires:
-              - overcloud-resource-registry-puppet.yaml
           - file: environments/neutron-opendaylight.yaml
             title: OpenDaylight
             description: Enables OpenDaylight
-            requires:
-              - overcloud-resource-registry-puppet.yaml
-          - file: environments/neutron-opendaylight-l3.yaml
-            title: OpenDaylight with L3 DVR
-            description: Enables OpenDaylight with L3 DVR
             requires:
               - overcloud-resource-registry-puppet.yaml
           - file: environments/neutron-ovs-dpdk.yaml
@@ -373,6 +360,16 @@ topics:
           - file: environments/neutron-ml2-fujitsu-fossw.yaml
             title: Fujitsu Neutron plugin for FOS
             description: Enable FOS in the overcloud
+            requires:
+              - overcloud-resource-registry-puppet.yaml
+          - file: environments/neutron-nsx.yaml
+            title: Deploy NSX Services
+            description:
+            requires:
+              - overcloud-resource-registry-puppet.yaml
+          - file: environments/neutron-l2gw.yaml
+            title: Neutron L2 gateway Service Plugin
+            description: Enables Neutron L2 gateway Service Plugin
             requires:
               - overcloud-resource-registry-puppet.yaml
 
@@ -407,6 +404,11 @@ topics:
         description: >
           Enable various Cinder backends
         environments:
+          - file: environments/cinder-pure-config.yaml
+            title: Cinder Pure Storage FlashArray backend
+            description:
+            requires:
+              - overcloud-resource-registry-puppet.yaml
           - file: environments/cinder-netapp-config.yaml
             title: Cinder NetApp backend
             description:
@@ -544,14 +546,6 @@ topics:
             description:
             requires:
               - overcloud-resource-registry-puppet.yaml
-      - title: Manage Firewall
-        description:
-        environments:
-          - file: environments/manage-firewall.yaml
-            title: Manage Firewall
-            description:
-            requires:
-              - overcloud-resource-registry-puppet.yaml
 
   - title: Operational Tools
     description:
@@ -560,7 +554,7 @@ topics:
         description: Enable monitoring agents
         environments:
           - file: environments/monitoring-environment.yaml
-            title: enable monitoring agents
+            title: Enable monitoring agents
             description:
             requires:
               - overcloud-resource-registry-puppet.yaml
@@ -569,6 +563,14 @@ topics:
         environments:
           - file: environments/logging-environment.yaml
             title: Enable fluentd client
+            description:
+            requires:
+              - overcloud-resource-registry-puppet.yaml
+      - title: Performance monitoring
+        description: Enable performance monitoring agents
+        environments:
+          - file: environments/collectd-environment.yaml
+            title: Enable performance monitoring agents
             description:
             requires:
               - overcloud-resource-registry-puppet.yaml
@@ -600,3 +602,13 @@ topics:
             description:
             requires:
               - overcloud-resource-registry-puppet.yaml
+      - title: Keystone CADF auditing
+        description: Enable CADF notifications in Keystone for auditing
+        environments:
+          - file: environments/cadf.yaml
+            title: Keystone CADF auditing
+      - title: SecureTTY Values
+        description: Set values within /etc/securetty
+        environments:
+          - file: environments/securetty.yaml
+            title: SecureTTY Values

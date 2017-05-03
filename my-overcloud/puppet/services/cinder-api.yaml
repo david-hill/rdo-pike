@@ -46,6 +46,12 @@ parameters:
   EnableInternalTLS:
     type: boolean
     default: false
+  CinderApiPolicies:
+    description: |
+      A hash of policies to configure for Cinder API.
+      e.g. { cinder-context_is_admin: { key: context_is_admin, value: 'role:admin' } }
+    default: {}
+    type: json
 
 conditions:
   cinder_workers_zero: {equals : [{get_param: CinderWorkers}, 0]}
@@ -80,10 +86,13 @@ outputs:
         map_merge:
           - get_attr: [CinderBase, role_data, config_settings]
           - get_attr: [ApacheServiceBase, role_data, config_settings]
-          - cinder::keystone::authtoken::auth_uri: {get_param: [EndpointMap, KeystoneInternal, uri]}
+          - cinder::keystone::authtoken::auth_uri: {get_param: [EndpointMap, KeystoneInternal, uri_no_suffix]}
             cinder::keystone::authtoken::auth_url: {get_param: [EndpointMap, KeystoneInternal, uri_no_suffix]}
             cinder::keystone::authtoken::password: {get_param: CinderPassword}
             cinder::keystone::authtoken::project_name: 'service'
+            cinder::keystone::authtoken::user_domain_name: 'Default'
+            cinder::keystone::authtoken::project_domain_name: 'Default'
+            cinder::policy::policies: {get_param: CinderApiPolicies}
             cinder::api::enable_proxy_headers_parsing: true
 
             cinder::api::nova_catalog_info: 'compute:nova:internalURL'
@@ -150,25 +159,31 @@ outputs:
       metadata_settings:
         get_attr: [ApacheServiceBase, role_data, metadata_settings]
       upgrade_tasks:
-        - name: Check if cinder_api is deployed
-          command: systemctl is-enabled openstack-cinder-api
-          tags: common
-          ignore_errors: True
-          register: cinder_api_enabled
-        - name: "PreUpgrade step0,validation: Check service openstack-cinder-api is running"
-          shell: /usr/bin/systemctl show 'openstack-cinder-api' --property ActiveState | grep '\bactive\b'
-          when: cinder_api_enabled.rc == 0
-          tags: step0,validation
-        - name: check for cinder running under apache (post upgrade)
-          tags: step1
-          shell: "apachectl -t -D DUMP_VHOSTS | grep -q cinder"
-          register: cinder_apache
-          ignore_errors: true
-        - name: Stop cinder_api service (running under httpd)
-          tags: step1
-          service: name=httpd state=stopped
-          when: "cinder_apache.rc == 0"
-        - name: Stop and disable cinder_api service (pre-upgrade not under httpd)
-          tags: step1
-          when: cinder_api_enabled.rc == 0
-          service: name=openstack-cinder-api state=stopped enabled=no
+        yaql:
+          expression: $.data.apache_upgrade + $.data.cinder_api_upgrade
+          data:
+            apache_upgrade:
+              get_attr: [ApacheServiceBase, role_data, upgrade_tasks]
+            cinder_api_upgrade:
+              - name: Check if cinder_api is deployed
+                command: systemctl is-enabled openstack-cinder-api
+                tags: common
+                ignore_errors: True
+                register: cinder_api_enabled
+              - name: "PreUpgrade step0,validation: Check service openstack-cinder-api is running"
+                shell: /usr/bin/systemctl show 'openstack-cinder-api' --property ActiveState | grep '\bactive\b'
+                when: cinder_api_enabled.rc == 0
+                tags: step0,validation
+              - name: check for cinder running under apache (post upgrade)
+                tags: step1
+                shell: "httpd -t -D DUMP_VHOSTS | grep -q cinder"
+                register: cinder_apache
+                ignore_errors: true
+              - name: Stop cinder_api service (running under httpd)
+                tags: step1
+                service: name=httpd state=stopped
+                when: cinder_apache.rc == 0
+              - name: Stop and disable cinder_api service (pre-upgrade not under httpd)
+                tags: step1
+                when: cinder_api_enabled.rc == 0
+                service: name=openstack-cinder-api state=stopped enabled=no

@@ -21,23 +21,7 @@
   {{role.name}}Config:
     type: OS::TripleO::{{role.name}}Config
     properties:
-      StepConfig: {get_param: [role_data, {{role.name}}, step_config]}
-
-  {% if role.name == 'Controller' %}
-  ControllerPrePuppet:
-    type: OS::TripleO::Tasks::ControllerPrePuppet
-    properties:
-      servers: {get_param: [servers, Controller]}
-      input_values:
-        update_identifier: {get_param: DeployIdentifier}
-  {% endif %}
-
-  {% if role.name in ['Controller', 'ObjectStorage'] %}
-  {{role.name}}SwiftRingDeploy:
-    type: OS::TripleO::Tasks::SwiftRingDeploy
-    properties:
-      servers: {get_param: [servers, {{role.name}}]}
-  {% endif %}
+      StepConfig: {list_join: ["\n", {get_param: [role_data, {{role.name}}, step_config]}]}
 
   # Step through a series of configuration steps
 {% for step in range(1, 6) %}
@@ -67,7 +51,7 @@
       - {{dep.name}}Deployment_Step5
   {% endfor %}
     properties:
-      servers:  {get_param: servers}
+      servers: {get_param: servers}
       input_values:
         update_identifier: {get_param: DeployIdentifier}
 
@@ -82,25 +66,4 @@
     properties:
         servers: {get_param: [servers, {{role.name}}]}
 
-  {% if role.name == 'Controller' %}
-  ControllerPostPuppet:
-    depends_on:
-      - ControllerExtraConfigPost
-    type: OS::TripleO::Tasks::ControllerPostPuppet
-    properties:
-      servers: {get_param: [servers, Controller]}
-      input_values:
-        update_identifier: {get_param: DeployIdentifier}
-  {% endif %}
-
-  {% if role.name in ['Controller', 'ObjectStorage'] %}
-  {{role.name}}SwiftRingUpdate:
-    type: OS::TripleO::Tasks::SwiftRingUpdate
-    depends_on:
-  {% for dep in roles %}
-      - {{dep.name}}Deployment_Step5
-  {% endfor %}
-    properties:
-      servers: {get_param: [servers, {{role.name}}]}
-  {% endif %}
 {% endfor %}

@@ -24,7 +24,7 @@
     - OS::TripleO::Services::CACerts
     - OS::TripleO::Services::CinderApi
     - OS::TripleO::Services::CinderScheduler
-    - OS::TripleO::Services::Core
+    - OS::TripleO::Services::Docker
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Keystone
     - OS::TripleO::Services::GlanceApi
@@ -55,6 +55,8 @@
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::NovaCompute
     - OS::TripleO::Services::NovaLibvirt
+    - OS::TripleO::Services::MySQLClient
+    - OS::TripleO::Services::Sshd
 
 - name: Controller
   CountDefault: 1
@@ -62,7 +64,7 @@
     - OS::TripleO::Services::CACerts
     - OS::TripleO::Services::CinderBackup
     - OS::TripleO::Services::CinderVolume
-    - OS::TripleO::Services::Core
+    - OS::TripleO::Services::Docker
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::MySQL
     - OS::TripleO::Services::MySQLClient
@@ -76,3 +78,4 @@
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
+    - OS::TripleO::Services::Sshd

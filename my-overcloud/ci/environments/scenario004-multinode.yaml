@@ -12,13 +12,15 @@ resource_registry:
   OS::TripleO::Services::ManilaScheduler: ../../puppet/services/manila-scheduler.yaml
   OS::TripleO::Services::ManilaShare: ../../puppet/services/pacemaker/manila-share.yaml
   OS::TripleO::Services::ManilaBackendCephFs: ../../puppet/services/manila-backend-cephfs.yaml
+  OS::TripleO::Services::NeutronBgpVpnApi: ../../puppet/services/neutron-bgpvpn-api.yaml
   # These enable Pacemaker
-  OS::TripleO::Tasks::ControllerPrePuppet: ../../extraconfig/tasks/pre_puppet_pacemaker.yaml
-  OS::TripleO::Tasks::ControllerPostPuppet: ../../extraconfig/tasks/post_puppet_pacemaker.yaml
+  OS::TripleO::Tasks::ControllerPreConfig: ../../extraconfig/tasks/pre_puppet_pacemaker.yaml
+  OS::TripleO::Tasks::ControllerPostConfig: ../../extraconfig/tasks/post_puppet_pacemaker.yaml
   OS::TripleO::Tasks::ControllerPostPuppetRestart: ../../extraconfig/tasks/post_puppet_pacemaker_restart.yaml
   OS::TripleO::Services::RabbitMQ: ../../puppet/services/pacemaker/rabbitmq.yaml
   OS::TripleO::Services::HAproxy: ../../puppet/services/pacemaker/haproxy.yaml
   OS::TripleO::Services::Pacemaker: ../../puppet/services/pacemaker.yaml
+  OS::TripleO::Services::Redis: ../../puppet/services/pacemaker/database/redis.yaml
   OS::TripleO::Services::MySQL: ../../puppet/services/pacemaker/database/mysql.yaml
   OS::TripleO::Services::Keepalived: OS::Heat::None
 
@@ -29,6 +31,7 @@ parameter_defaults:
     - OS::TripleO::Services::CephMon
     - OS::TripleO::Services::CephOSD
     - OS::TripleO::Services::CephRgw
+    - OS::TripleO::Services::Docker
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Keystone
     - OS::TripleO::Services::GlanceApi
@@ -38,6 +41,7 @@ parameter_defaults:
     - OS::TripleO::Services::HeatEngine
     - OS::TripleO::Services::MySQL
     - OS::TripleO::Services::MySQLClient
+    - OS::TripleO::Services::NeutronBgpVpnApi
     - OS::TripleO::Services::NeutronDhcpAgent
     - OS::TripleO::Services::NeutronL3Agent
     - OS::TripleO::Services::NeutronMetadataAgent
@@ -65,6 +69,7 @@ parameter_defaults:
     - OS::TripleO::Services::NovaLibvirt
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
+    - OS::TripleO::Services::Sshd
   ControllerExtraConfig:
     nova::compute::libvirt::services::libvirt_virt_type: qemu
     nova::compute::libvirt::libvirt_virt_type: qemu
@@ -82,3 +87,5 @@ parameter_defaults:
   CephAdminKey: 'AQDLOh1VgEp6FRAAFzT7Zw+Y9V6JJExQAsRnRQ=='
   CephClientKey: 'AQC+vYNXgDAgAhAAc8UoYt+OTz5uhV7ItLdwUw=='
   SwiftCeilometerPipelineEnabled: false
+  NeutronServicePlugins: 'router, networking_bgpvpn.neutron.services.plugin.BGPVPNPlugin'
+  BgpvpnServiceProvider: 'BGPVPN:Dummy:networking_bgpvpn.neutron.services.service_drivers.driver_api.BGPVPNDriver:default'
