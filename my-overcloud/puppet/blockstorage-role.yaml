@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 description: 'OpenStack cinder storage configured by Puppet'
 parameters:
   BlockStorageImage:
@@ -109,6 +109,15 @@ parameters:
     type: string
     description: Command which will be run whenever configuration data changes
     default: os-refresh-config --timeout 14400
+  ConfigCollectSplay:
+    type: number
+    default: 30
+    description: |
+      Maximum amount of time to possibly to delay configuation collection
+      polling. Defaults to 30 seconds. Set to 0 to disable it which will cause
+      the configuration collection to occur as soon as the collection process
+      starts.  This setting is used to prevent the configuration collection
+      processes from polling all at the exact same time.
   UpgradeInitCommand:
     type: string
     description: |
@@ -123,6 +132,20 @@ parameters:
       major-upgrade-composable-steps.yaml and major-upgrade-converge.yaml
       environment files.
     default: ''
+  DeploymentServerBlacklistDict:
+    default: {}
+    type: json
+    description: >
+      Map of server hostnames to blacklist from any triggered
+      deployments. If the value is 1, the server will be blacklisted. This
+      parameter is generated from the parent template.
+
+conditions:
+  server_not_blacklisted:
+    not:
+      equals:
+        - {get_param: [DeploymentServerBlacklistDict, {get_param: Hostname}]}
+        - 1
 
 resources:
   BlockStorage:
@@ -130,6 +153,7 @@ resources:
     metadata:
       os-collect-config:
         command: {get_param: ConfigCommand}
+        splay: {get_param: ConfigCollectSplay}
     properties:
       image:
         {get_param: BlockStorageImage}
@@ -356,7 +380,11 @@ resources:
       name: NetworkDeployment
       config: {get_resource: NetworkConfig}
       server: {get_resource: BlockStorage}
-      actions: {get_param: NetworkDeploymentActions}
+      actions:
+        if:
+          - server_not_blacklisted
+          - {get_param: NetworkDeploymentActions}
+          - []
 
   BlockStorageUpgradeInitConfig:
     type: OS::Heat::SoftwareConfig
@@ -379,6 +407,11 @@ resources:
       name: BlockStorageUpgradeInitDeployment
       server: {get_resource: BlockStorage}
       config: {get_resource: BlockStorageUpgradeInitConfig}
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
 
   BlockStorageDeployment:
     type: OS::Heat::StructuredDeployment
@@ -389,6 +422,11 @@ resources:
       config: {get_resource: BlockStorageConfig}
       input_values:
         enable_package_upgrade: {get_attr: [UpdateDeployment, update_managed_packages]}
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
 
   # Map heat metadata into hiera datafiles
   BlockStorageConfig:
@@ -399,6 +437,7 @@ resources:
         hierarchy:
           - '"%{::uuid}"'
           - heat_config_%{::deploy_config_name}
+          - config_step
           - volume_extraconfig
           - extraconfig
           - service_names
@@ -456,6 +495,11 @@ resources:
       input_values:
         update_identifier:
           get_param: UpdateIdentifier
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
 
   SshHostPubKey:
     type: OS::TripleO::Ssh::HostPubKey
@@ -545,6 +589,7 @@ CTLPLANEIP,CTLPLANEHOST.DOMAIN,CTLPLANEHOST HOSTSSHPUBKEY"
     description: Heat resource handle for the block storage server
     value:
       {get_resource: BlockStorage}
+    condition: server_not_blacklisted
   external_ip_address:
     description: IP address of the server in the external network
     value: {get_attr: [ExternalPort, ip_address]}

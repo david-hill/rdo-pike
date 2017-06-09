@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   Horizon service configured with Puppet
@@ -14,8 +14,20 @@ parameters:
     default: ''
     description: Set to True to enable debugging on all services.
     type: string
+  HorizonDebug:
+    default: false
+    description: Set to True to enable debugging Horizon service.
+    type: string
   DefaultPasswords:
     default: {}
+    type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
     type: json
   EndpointMap:
     default: {}
@@ -54,7 +66,7 @@ parameters:
 
 conditions:
 
-  debug_empty: {equals : [{get_param: Debug}, '']}
+  debug_unset: {equals : [{get_param: Debug}, '']}
 
 outputs:
   role_data:
@@ -96,9 +108,9 @@ outputs:
           memcached_ipv6: {get_param: MemcachedIPv6}
         -
           if:
-          - debug_empty
-          - {}
-          - horizon::django_debug: {get_param: Debug}
+          - debug_unset
+          - horizon::django_debug: { get_param: HorizonDebug }
+          - horizon::django_debug: { get_param: Debug }
       step_config: |
         include ::tripleo::profile::base::horizon
       # Ansible tasks to handle upgrade
@@ -118,3 +130,10 @@ outputs:
           tags: step1
           when: httpd_enabled.rc == 0
           service: name=httpd state=stopped
+      service_config_settings:
+        haproxy:
+          tripleo.horizon.firewall_rules:
+            '127 horizon':
+              dport:
+                - 80
+                - 443

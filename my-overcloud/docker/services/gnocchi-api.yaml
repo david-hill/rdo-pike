@@ -26,6 +26,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EnableInternalTLS:
     type: boolean
     default: false
@@ -45,6 +53,8 @@ resources:
         EndpointMap: {get_param: EndpointMap}
         ServiceNetMap: {get_param: ServiceNetMap}
         DefaultPasswords: {get_param: DefaultPasswords}
+        RoleName: {get_param: RoleName}
+        RoleParameters: {get_param: RoleParameters}
 
 outputs:
   role_data:
@@ -68,30 +78,36 @@ outputs:
             - '/'
             - [ {get_param: DockerNamespace}, {get_param: DockerGnocchiApiImage} ]
       kolla_config:
-        /var/lib/kolla/config_files/gnocchi-api.json:
+        /var/lib/kolla/config_files/gnocchi_api.json:
           command: /usr/sbin/httpd -DFOREGROUND
+          permissions:
+            - path: /var/log/gnocchi
+              owner: gnocchi:gnocchi
+              recurse: true
       docker_config:
+        # db sync runs before permissions set by kolla_config
         step_3:
           gnocchi_init_log:
             start_order: 0
             image: *gnocchi_image
             user: root
-            command: ['/bin/bash', '-c', 'mkdir -p /var/log/httpd && mkdir -p /var/log/gnocchi && chown gnocchi:gnocchi /var/log/gnocchi']
             volumes:
-              - logs:/var/log
+              - /var/log/containers/gnocchi:/var/log/gnocchi
+            command: ['/bin/bash', '-c', 'mkdir -p /var/log/httpd; chown -R gnocchi:gnocchi /var/log/gnocchi']
           gnocchi_db_sync:
             start_order: 1
             image: *gnocchi_image
             net: host
             detach: false
             privileged: false
+            user: root
             volumes:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
                   - /var/lib/config-data/gnocchi/etc/gnocchi/:/etc/gnocchi/:ro
-                  - logs:/var/log
-            command: ["/usr/bin/gnocchi-upgrade", "--skip-storage"]
+                  - /var/log/containers/gnocchi:/var/log/gnocchi
+            command: "/usr/bin/bootstrap_host_exec gnocchi_api su gnocchi -s /bin/bash -c '/usr/bin/gnocchi-upgrade --skip-storage'"
         step_4:
           gnocchi_api:
             image: *gnocchi_image
@@ -102,10 +118,11 @@ outputs:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
-                  - /var/lib/kolla/config_files/gnocchi-api.json:/var/lib/kolla/config_files/config.json:ro
+                  - /var/lib/kolla/config_files/gnocchi_api.json:/var/lib/kolla/config_files/config.json:ro
                   - /var/lib/config-data/gnocchi/etc/gnocchi/:/etc/gnocchi/:ro
                   - /var/lib/config-data/gnocchi/etc/httpd/:/etc/httpd/:ro
                   - /var/lib/config-data/gnocchi/var/www/:/var/www/:ro
+                  - /var/log/containers/gnocchi:/var/log/gnocchi
                   -
                     if:
                       - internal_tls_enabled
@@ -118,6 +135,11 @@ outputs:
                       - ''
             environment:
               - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
+      host_prep_tasks:
+        - name: create persistent logs directory
+          file:
+            path: /var/log/containers/gnocchi
+            state: directory
       upgrade_tasks:
         - name: Stop and disable httpd service
           tags: step2

@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Neutron base service. Shared for all Neutron agents.
@@ -50,6 +50,10 @@ parameters:
     type: string
     default: ''
     description: Set to True to enable debugging on all services.
+  NeutronDebug:
+    default: ''
+    description: Set to True to enable debugging Neutron services.
+    type: string
   EnableConfigPurge:
     type: boolean
     default: false
@@ -74,6 +78,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -82,6 +94,7 @@ parameters:
 
 conditions:
   dhcp_agents_zero: {equals : [{get_param: NeutronDhcpAgentsPerNetwork}, 0]}
+  service_debug_unset: {equals : [{get_param: NeutronDebug}, '']}
 
 outputs:
   role_data:
@@ -96,7 +109,11 @@ outputs:
             neutron::rabbit_port: {get_param: RabbitClientPort}
             neutron::core_plugin: {get_param: NeutronCorePlugin}
             neutron::service_plugins: {get_param: NeutronServicePlugins}
-            neutron::debug: {get_param: Debug}
+            neutron::debug:
+              if:
+              - service_debug_unset
+              - {get_param: Debug }
+              - {get_param: NeutronDebug }
             neutron::purge_config: {get_param: EnableConfigPurge}
             neutron::allow_overlapping_ips: true
             neutron::dns_domain: {get_param: NeutronDnsDomain}

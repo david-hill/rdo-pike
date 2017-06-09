@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Keystone service configured with Puppet
@@ -47,6 +47,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -55,6 +63,10 @@ parameters:
   Debug:
     type: string
     default: ''
+  KeystoneDebug:
+    default: ''
+    description: Set to True to enable debugging Keystone service.
+    type: string
   AdminEmail:
     default: 'admin@example.com'
     description: The email for the keystone admin account.
@@ -183,11 +195,14 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
       EnableInternalTLS: {get_param: EnableInternalTLS}
 
 conditions:
   keystone_fernet_tokens: {equals: [{get_param: KeystoneTokenProvider}, "fernet"]}
   keystone_ldap_domain_enabled: {equals: [{get_param: KeystoneLDAPDomainEnable}, True]}
+  service_debug_unset: {equals : [{get_param: KeystoneDebug}, '']}
 
 outputs:
   role_data:
@@ -202,15 +217,15 @@ outputs:
         map_merge:
           - get_attr: [ApacheServiceBase, role_data, config_settings]
           - keystone::database_connection:
-              list_join:
-                - ''
-                - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-                  - '://keystone:'
-                  - {get_param: AdminToken}
-                  - '@'
-                  - {get_param: [EndpointMap, MysqlInternal, host]}
-                  - '/keystone'
-                  - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
+              make_url:
+                scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+                username: keystone
+                password: {get_param: AdminToken}
+                host: {get_param: [EndpointMap, MysqlInternal, host]}
+                path: /keystone
+                query:
+                  read_default_file: /etc/my.cnf.d/tripleo.cnf
+                  read_default_group: tripleo
             keystone::admin_token: {get_param: AdminToken}
             keystone::admin_password: {get_param: AdminPassword}
             keystone::roles::admin::password: {get_param: AdminPassword}
@@ -231,7 +246,12 @@ outputs:
                 content: {get_param: KeystoneFernetKey0}
               '/etc/keystone/fernet-keys/1':
                 content: {get_param: KeystoneFernetKey1}
-            keystone::debug: {get_param: Debug}
+            keystone::fernet_replace_keys: false
+            keystone::debug:
+              if:
+              - service_debug_unset
+              - {get_param: Debug }
+              - {get_param: KeystoneDebug }
             keystone::rabbit_userid: {get_param: RabbitUserName}
             keystone::rabbit_password: {get_param: RabbitPassword}
             keystone::rabbit_use_ssl: {get_param: RabbitClientUseSSL}

@@ -19,8 +19,8 @@ resource_registry:
   OS::TripleO::Tasks::ControllerPreConfig: ../../extraconfig/tasks/pre_puppet_pacemaker.yaml
   OS::TripleO::Tasks::ControllerPostConfig: ../../extraconfig/tasks/post_puppet_pacemaker.yaml
   OS::TripleO::Tasks::ControllerPostPuppetRestart: ../../extraconfig/tasks/post_puppet_pacemaker_restart.yaml
-  OS::TripleO::Services::FluentdClient: /usr/share/openstack-tripleo-heat-templates/puppet/services/logging/fluentd-client.yaml
-  OS::TripleO::Services::SensuClient: /usr/share/openstack-tripleo-heat-templates/puppet/services/monitoring/sensu-client.yaml
+  OS::TripleO::Services::FluentdClient: ../../puppet/services/logging/fluentd-client.yaml
+  OS::TripleO::Services::SensuClient: ../../puppet/services/monitoring/sensu-client.yaml
 
 parameter_defaults:
   ControllerServices:
@@ -63,7 +63,6 @@ parameter_defaults:
     - OS::TripleO::Services::AodhEvaluator
     - OS::TripleO::Services::AodhNotifier
     - OS::TripleO::Services::AodhListener
-    - OS::TripleO::Services::CeilometerExpirer
     - OS::TripleO::Services::CeilometerAgentCentral
     - OS::TripleO::Services::CeilometerAgentIpmi
     - OS::TripleO::Services::CeilometerAgentNotification
@@ -102,6 +101,7 @@ parameter_defaults:
   CephMonKey: 'AQC+Ox1VmEr3BxAALZejqeHj50Nj6wJDvs96OQ=='
   CephAdminKey: 'AQDLOh1VgEp6FRAAFzT7Zw+Y9V6JJExQAsRnRQ=='
   CephClientKey: 'AQC+vYNXgDAgAhAAc8UoYt+OTz5uhV7ItLdwUw=='
+  CephPoolDefaultSize: 1
   NovaEnableRbdBackend: true
   CinderEnableRbdBackend: true
   CinderBackupBackend: ceph

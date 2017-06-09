@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Ceilometer Collector service configured with Puppet
@@ -13,6 +13,14 @@ parameters:
     type: json
   DefaultPasswords:
     default: {}
+    type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
     type: json
   EndpointMap:
     default: {}
@@ -51,7 +59,16 @@ parameters:
     type: comma_delimited_list
     constraints:
     - allowed_values: ['panko', 'gnocchi', 'database']
-
+  CeilometerEventTTL:
+    default: '86400'
+    description: Number of seconds that events are kept in the database for
+                 (<= 0 means forever)
+    type: string
+  CeilometerMeteringTTL:
+    default: '86400'
+    description: Number of seconds that samples are kept in the database for
+                 (<= 0 means forever)
+    type: string
 resources:
   CeilometerServiceBase:
     type: ./ceilometer-base.yaml
@@ -59,6 +76,8 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
 
   MongoDbBase:
     type: ./database/mongodb-base.yaml
@@ -66,6 +85,8 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
 
 outputs:
   role_data:
@@ -81,16 +102,18 @@ outputs:
           - get_attr: [MongoDbBase, role_data, config_settings]
           - get_attr: [CeilometerServiceBase, role_data, config_settings]
           - ceilometer::db::database_connection:
-              list_join:
-                - ''
-                - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-                - - '://ceilometer:'
-                  - {get_param: CeilometerPassword}
-                  - '@'
-                  - {get_param: [EndpointMap, MysqlInternal, host]}
-                  - '/ceilometer'
-                  - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
+              make_url:
+                scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+                username: ceilometer
+                password: {get_param: CeilometerPassword}
+                host: {get_param: [EndpointMap, MysqlInternal, host]}
+                path: /ceilometer
+                query:
+                  read_default_file: /etc/my.cnf.d/tripleo.cnf
+                  read_default_group: tripleo
             ceilometer_backend: {get_param: CeilometerBackend}
+            ceilometer::event_time_to_live: {get_param: CeilometerEventTTL}
+            ceilometer::metering_time_to_live: {get_param: CeilometerMeteringTTL}
             # we include db_sync class in puppet-tripleo
             ceilometer::db::sync_db: false
             ceilometer::db::database_db_max_retries: -1

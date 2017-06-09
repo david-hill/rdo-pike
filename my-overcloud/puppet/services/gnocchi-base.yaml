@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   Gnocchi service configured with Puppet
@@ -13,6 +13,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -21,6 +29,14 @@ parameters:
   GnocchiIndexerBackend:
     default: 'mysql'
     description: The short name of the Gnocchi indexer backend to use.
+    type: string
+  MetricProcessingDelay:
+    default: 30
+    description: Delay between processing metrics.
+    type: number
+  NumberOfStorageSacks:
+    default: '128'
+    description: Number of storage sacks to create.
     type: string
   GnocchiPassword:
     description: The password for the gnocchi service and db account.
@@ -40,6 +56,13 @@ parameters:
     type: string
     default: ''
     description: Set to True to enable debugging on all services.
+  GnocchiDebug:
+    default: ''
+    description: Set to True to enable debugging Gnocchi services.
+    type: string
+
+conditions:
+  service_debug_unset: {equals : [{get_param: GnocchiDebug}, '']}
 
 outputs:
   aux_parameters:
@@ -53,18 +76,27 @@ outputs:
       config_settings:
         #Gnocchi engine
         gnocchi_redis_password: {get_param: RedisPassword}
-        gnocchi::debug: {get_param: Debug}
+        gnocchi::debug:
+          if:
+          - service_debug_unset
+          - {get_param: Debug }
+          - {get_param: GnocchiDebug }
         gnocchi::db::database_connection:
+          make_url:
+            scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+            username: gnocchi
+            password: {get_param: GnocchiPassword}
+            host: {get_param: [EndpointMap, MysqlInternal, host]}
+            path: /gnocchi
+            query:
+              read_default_file: /etc/my.cnf.d/tripleo.cnf
+              read_default_group: tripleo
+        gnocchi::db::sync::extra_opts:
           list_join:
-            - ''
-            - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-              - '://gnocchi:'
-              - {get_param: GnocchiPassword}
-              - '@'
-              - {get_param: [EndpointMap, MysqlInternal, host]}
-              - '/gnocchi'
-              - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
-        gnocchi::db::sync::extra_opts: '--skip-storage'
+          - ' '
+          - - '--num-storage-sacks'
+            - {get_param: NumberOfStorageSacks}
+        gnocchi::storage::metric_processing_delay: {get_param: MetricProcessingDelay}
         gnocchi::storage::swift::swift_user: 'service:gnocchi'
         gnocchi::storage::swift::swift_auth_version: 3
         gnocchi::storage::swift::swift_key: {get_param: GnocchiPassword}

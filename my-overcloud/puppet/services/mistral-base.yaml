@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   Openstack Mistral base service. Shared for all Mistral services.
@@ -13,6 +13,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -22,6 +30,10 @@ parameters:
   Debug:
     default: ''
     description: Set to True to enable debugging on all services.
+    type: string
+  MistralDebug:
+    default: ''
+    description: Set to True to enable debugging Mistral services.
     type: string
   RabbitPassword:
     description: The password for RabbitMQ
@@ -50,6 +62,9 @@ parameters:
     default: 'regionOne'
     description: Keystone region for endpoint
 
+conditions:
+  service_debug_unset: {equals : [{get_param: MistralDebug}, '']}
+
 outputs:
   role_data:
     description: Shared role data for the Mistral services.
@@ -57,20 +72,24 @@ outputs:
       service_name: mistral_base
       config_settings:
         mistral::database_connection:
-          list_join:
-            - ''
-            - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-              - '://mistral:'
-              - {get_param: MistralPassword}
-              - '@'
-              - {get_param: [EndpointMap, MysqlInternal, host]}
-              - '/mistral'
-              - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
+          make_url:
+            scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+            username: mistral
+            password: {get_param: MistralPassword}
+            host: {get_param: [EndpointMap, MysqlInternal, host]}
+            path: /mistral
+            query:
+              read_default_file: /etc/my.cnf.d/tripleo.cnf
+              read_default_group: tripleo
         mistral::rabbit_userid: {get_param: RabbitUserName}
         mistral::rabbit_password: {get_param: RabbitPassword}
         mistral::rabbit_use_ssl: {get_param: RabbitClientUseSSL}
         mistral::rabbit_port: {get_param: RabbitClientPort}
-        mistral::debug: {get_param: Debug}
+        mistral::debug:
+          if:
+          - service_debug_unset
+          - {get_param: Debug }
+          - {get_param: MistralDebug }
         mistral::keystone_password: {get_param: MistralPassword}
         mistral::keystone_tenant: 'service'
         mistral::auth_uri: {get_param: [EndpointMap, KeystoneInternal, uri]}

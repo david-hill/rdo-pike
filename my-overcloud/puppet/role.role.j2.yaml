@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 description: 'OpenStack {{role}} node configured by Puppet'
 parameters:
   Overcloud{{role}}Flavor:
@@ -125,6 +125,15 @@ parameters:
     type: string
     description: Command which will be run whenever configuration data changes
     default: os-refresh-config --timeout 14400
+  ConfigCollectSplay:
+    type: number
+    default: 30
+    description: |
+      Maximum amount of time to possibly to delay configuation collection
+      polling. Defaults to 30 seconds. Set to 0 to disable it which will cause
+      the configuration collection to occur as soon as the collection process
+      starts.  This setting is used to prevent the configuration collection
+      processes from polling all at the exact same time.
   LoggingSources:
     type: json
     default: []
@@ -145,6 +154,20 @@ parameters:
       major-upgrade-composable-steps.yaml and major-upgrade-converge.yaml
       environment files.
     default: ''
+  DeploymentServerBlacklistDict:
+    default: {}
+    type: json
+    description: >
+      Map of server hostnames to blacklist from any triggered
+      deployments. If the value is 1, the server will be blacklisted. This
+      parameter is generated from the parent template.
+
+conditions:
+  server_not_blacklisted:
+    not:
+      equals:
+        - {get_param: [DeploymentServerBlacklistDict, {get_param: Hostname}]}
+        - 1
 
 resources:
   {{role}}:
@@ -152,6 +175,7 @@ resources:
     metadata:
       os-collect-config:
         command: {get_param: ConfigCommand}
+        splay: {get_param: ConfigCollectSplay}
     properties:
       image: {get_param: {{role}}Image}
       image_update_policy: {get_param: ImageUpdatePolicy}
@@ -382,6 +406,11 @@ resources:
       input_values:
         bridge_name: br-ex
         interface_name: {get_param: NeutronPublicInterface}
+      actions:
+        if:
+          - server_not_blacklisted
+          - {get_param: NetworkDeploymentActions}
+          - []
 
   {{role}}UpgradeInitConfig:
     type: OS::Heat::SoftwareConfig
@@ -404,6 +433,11 @@ resources:
       name: {{role}}UpgradeInitDeployment
       server: {get_resource: {{role}}}
       config: {get_resource: {{role}}UpgradeInitConfig}
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
 
   {{role}}Deployment:
     type: OS::Heat::StructuredDeployment
@@ -414,6 +448,11 @@ resources:
       server: {get_resource: {{role}}}
       input_values:
         enable_package_upgrade: {get_attr: [UpdateDeployment, update_managed_packages]}
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
 
   {{role}}Config:
     type: OS::Heat::StructuredConfig
@@ -423,6 +462,7 @@ resources:
         hierarchy:
           - '"%{::uuid}"'
           - heat_config_%{::deploy_config_name}
+          - config_step
           - {{role.lower()}}_extraconfig
           - extraconfig
           - service_names
@@ -489,6 +529,11 @@ resources:
       input_values:
         update_identifier:
           get_param: UpdateIdentifier
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
 
   SshHostPubKey:
     type: OS::TripleO::Ssh::HostPubKey
@@ -578,6 +623,7 @@ CTLPLANEIP,CTLPLANEHOST.DOMAIN,CTLPLANEHOST HOSTSSHPUBKEY"
     description: Heat resource handle for {{role}} server
     value:
       {get_resource: {{role}}}
+    condition: server_not_blacklisted
   external_ip_address:
     description: IP address of the server in the external network
     value: {get_attr: [ExternalPort, ip_address]}

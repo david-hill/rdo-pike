@@ -19,6 +19,7 @@ parameter_defaults:
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::ComputeNeutronCorePlugin
     - OS::TripleO::Services::ComputeNeutronOvsAgent
+    - OS::TripleO::Services::NeutronLinuxbridgeAgent
     - OS::TripleO::Services::ComputeCeilometerAgent
     - OS::TripleO::Services::ComputeNeutronL3Agent
     - OS::TripleO::Services::ComputeNeutronMetadataAgent
@@ -32,5 +33,6 @@ parameter_defaults:
     - OS::TripleO::Services::Collectd
     - OS::TripleO::Services::CephOSD
     - OS::TripleO::Services::Vpp
+    - OS::TripleO::Services::NeutronVppAgent
     - OS::TripleO::Services::MySQLClient
     - OS::TripleO::Services::Docker

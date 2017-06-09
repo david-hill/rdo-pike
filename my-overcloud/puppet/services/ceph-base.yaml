@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   Ceph base service. Shared by all Ceph services.
@@ -55,6 +55,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -91,7 +99,6 @@ outputs:
       service_name: ceph_base
       config_settings:
         tripleo::profile::base::ceph::enable_ceph_storage: {get_param: ControllerEnableCephStorage}
-        ceph::profile::params::osd_pool_default_min_size: 1
         ceph::profile::params::osds: {/srv/data: {}}
         ceph::profile::params::manage_repo: false
         ceph::profile::params::authentication_type: cephx

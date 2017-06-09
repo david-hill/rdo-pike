@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Glance API service configured with Puppet
@@ -13,6 +13,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -21,6 +29,10 @@ parameters:
   Debug:
     default: ''
     description: Set to True to enable debugging on all services.
+    type: string
+  GlanceDebug:
+    default: ''
+    description: Set to True to enable debugging Glance service.
     type: string
   GlancePassword:
     description: The password for the glance service and db account, used by the glance services.
@@ -50,10 +62,6 @@ parameters:
     default: false
   CephClientUserName:
     default: openstack
-    type: string
-  Debug:
-    default: ''
-    description: Set to True to enable debugging on all services.
     type: string
   GlanceNotifierStrategy:
     description: Strategy to use for Glance notification queue
@@ -120,6 +128,7 @@ parameters:
 conditions:
   use_tls_proxy: {equals : [{get_param: EnableInternalTLS}, true]}
   glance_workers_unset: {equals : [{get_param: GlanceWorkers}, '']}
+  service_debug_unset: {equals : [{get_param: GlanceDebug}, '']}
 
 resources:
 
@@ -129,6 +138,8 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
       EnableInternalTLS: {get_param: EnableInternalTLS}
 
 outputs:
@@ -144,15 +155,15 @@ outputs:
         map_merge:
           - get_attr: [TLSProxyBase, role_data, config_settings]
           - glance::api::database_connection:
-              list_join:
-                - ''
-                - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-                  - '://glance:'
-                  - {get_param: GlancePassword}
-                  - '@'
-                  - {get_param: [EndpointMap, MysqlInternal, host]}
-                  - '/glance'
-                  - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
+              make_url:
+                scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+                username: glance
+                password: {get_param: GlancePassword}
+                host: {get_param: [EndpointMap, MysqlInternal, host]}
+                path: /glance
+                query:
+                  read_default_file: /etc/my.cnf.d/tripleo.cnf
+                  read_default_group: tripleo
             glance::api::bind_port: {get_param: [EndpointMap, GlanceInternal, port]}
             glance::api::authtoken::auth_uri: {get_param: [EndpointMap, KeystoneInternal, uri_no_suffix] }
             glance::api::authtoken::auth_url: { get_param: [EndpointMap, KeystoneInternal, uri_no_suffix] }
@@ -160,7 +171,11 @@ outputs:
             glance::api::enable_v2_api: true
             glance::api::authtoken::password: {get_param: GlancePassword}
             glance::api::enable_proxy_headers_parsing: true
-            glance::api::debug: {get_param: Debug}
+            glance::api::debug:
+              if:
+              - service_debug_unset
+              - {get_param: Debug }
+              - {get_param: GlanceDebug }
             glance::policy::policies: {get_param: GlanceApiPolicies}
             tripleo.glance_api.firewall_rules:
               '112 glance_api':

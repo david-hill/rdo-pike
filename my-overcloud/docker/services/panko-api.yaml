@@ -28,6 +28,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EnableInternalTLS:
     type: boolean
     default: false
@@ -47,6 +55,8 @@ resources:
       EndpointMap: {get_param: EndpointMap}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
 
 outputs:
   role_data:
@@ -70,30 +80,35 @@ outputs:
             - '/'
             - [ {get_param: DockerNamespace}, {get_param: DockerPankoApiImage} ]
       kolla_config:
-        /var/lib/kolla/config_files/panko-api.json:
+        /var/lib/kolla/config_files/panko_api.json:
           command: /usr/sbin/httpd -DFOREGROUND
+          permissions:
+            - path: /var/log/panko
+              owner: panko:panko
+              recurse: true
       docker_config:
         step_3:
-          panko-init-log:
+          panko_init_log:
             start_order: 0
             image: *panko_image
             user: root
-            command: ['/bin/bash', '-c', 'mkdir -p /var/log/httpd && mkdir -p /var/log/panko && chown panko:panko /var/log/panko']
             volumes:
-              - logs:/var/log
+              - /var/log/containers/panko:/var/log/panko
+            command: ['/bin/bash', '-c', 'mkdir -p /var/log/httpd; chown -R panko:panko /var/log/panko']
           panko_db_sync:
             start_order: 1
             image: *panko_image
             net: host
             detach: false
             privileged: false
+            user: root
             volumes:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
                   - /var/lib/config-data/panko/etc/panko:/etc/panko:ro
-                  - logs:/var/log
-            command: /usr/bin/panko-dbsync
+                  - /var/log/containers/panko:/var/log/panko
+            command: "/usr/bin/bootstrap_host_exec panko_api su panko -s /bin/bash -c '/usr/bin/panko-dbsync'"
         step_4:
           panko_api:
             start_order: 2
@@ -105,10 +120,11 @@ outputs:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
-                  - /var/lib/kolla/config_files/panko-api.json:/var/lib/kolla/config_files/config.json:ro
+                  - /var/lib/kolla/config_files/panko_api.json:/var/lib/kolla/config_files/config.json:ro
                   - /var/lib/config-data/panko/etc/panko/:/etc/panko/:ro
                   - /var/lib/config-data/panko/etc/httpd/:/etc/httpd/:ro
                   - /var/lib/config-data/panko/var/www/:/var/www/:ro
+                  - /var/log/containers/panko:/var/log/panko
                   -
                     if:
                       - internal_tls_enabled
@@ -121,5 +137,10 @@ outputs:
                       - ''
             environment:
               - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
+      host_prep_tasks:
+        - name: create persistent logs directory
+          file:
+            path: /var/log/containers/panko
+            state: directory
       metadata_settings:
         get_attr: [PankoApiPuppetBase, role_data, metadata_settings]

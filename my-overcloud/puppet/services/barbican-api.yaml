@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Barbican API service configured with Puppet
@@ -12,6 +12,14 @@ parameters:
     type: json
   DefaultPasswords:
     default: {}
+    type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
     type: json
   EndpointMap:
     default: {}
@@ -29,6 +37,10 @@ parameters:
   Debug:
     default: ''
     description: Set to True to enable debugging on all services.
+    type: string
+  BarbicanDebug:
+    default: ''
+    description: Set to True to enable debugging Barbican service.
     type: string
   KeystoneRegion:
     type: string
@@ -70,6 +82,11 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
+
+conditions:
+  service_debug_unset: {equals : [{get_param: BarbicanDebug}, '']}
 
 outputs:
   role_data:
@@ -87,7 +104,11 @@ outputs:
             barbican::api::host_href: {get_param: [EndpointMap, BarbicanPublic, uri]}
             barbican::api::db_auto_create: false
             barbican::api::enabled_certificate_plugins: ['simple_certificate']
-            barbican::api::logging::debug: {get_param: Debug}
+            barbican::api::logging::debug:
+              if:
+              - service_debug_unset
+              - {get_param: Debug }
+              - {get_param: BarbicanDebug }
             barbican::api::rabbit_use_ssl: {get_param: RabbitClientUseSSL}
             barbican::api::rabbit_userid: {get_param: RabbitUserName}
             barbican::api::rabbit_password: {get_param: RabbitPassword}
@@ -104,15 +125,15 @@ outputs:
                 params:
                   $NETWORK: {get_param: [ServiceNetMap, BarbicanApiNetwork]}
             barbican::db::database_connection:
-              list_join:
-                - ''
-                - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-                  - '://barbican:'
-                  - {get_param: BarbicanPassword}
-                  - '@'
-                  - {get_param: [EndpointMap, MysqlInternal, host]}
-                  - '/barbican'
-                  - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
+              make_url:
+                scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+                username: barbican
+                password: {get_param: BarbicanPassword}
+                host: {get_param: [EndpointMap, MysqlInternal, host]}
+                path: /barbican
+                query:
+                  read_default_file: /etc/my.cnf.d/tripleo.cnf
+                  read_default_group: tripleo
             tripleo.barbican_api.firewall_rules:
               '117 barbican':
                 dport:

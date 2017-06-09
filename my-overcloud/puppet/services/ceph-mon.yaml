@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   Ceph Monitor service.
@@ -12,6 +12,14 @@ parameters:
     type: json
   DefaultPasswords:
     default: {}
+    type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
     type: json
   EndpointMap:
     default: {}
@@ -70,6 +78,10 @@ parameters:
   MonitoringSubscriptionCephMon:
     default: 'overcloud-ceph-mon'
     type: string
+  CephPoolDefaultSize:
+    description: default minimum replication for RBD copies
+    type: number
+    default: 3
 
 resources:
   CephBase:
@@ -78,6 +90,8 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
 
 outputs:
   role_data:
@@ -92,7 +106,7 @@ outputs:
             ceph::profile::params::mon_key: {get_param: CephMonKey}
             ceph::profile::params::osd_pool_default_pg_num: 32
             ceph::profile::params::osd_pool_default_pgp_num: 32
-            ceph::profile::params::osd_pool_default_size: 3
+            ceph::profile::params::osd_pool_default_size: {get_param: CephPoolDefaultSize}
             # repeat returns items in a list, so we need to map_merge twice
             tripleo::profile::base::ceph::mon::ceph_pools:
               map_merge:

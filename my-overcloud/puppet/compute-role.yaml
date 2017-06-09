@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack hypervisor node configured via Puppet.
@@ -127,6 +127,15 @@ parameters:
     type: string
     description: Command which will be run whenever configuration data changes
     default: os-refresh-config --timeout 14400
+  ConfigCollectSplay:
+    type: number
+    default: 30
+    description: |
+      Maximum amount of time to possibly to delay configuation collection
+      polling. Defaults to 30 seconds. Set to 0 to disable it which will cause
+      the configuration collection to occur as soon as the collection process
+      starts.  This setting is used to prevent the configuration collection
+      processes from polling all at the exact same time.
   UpgradeInitCommand:
     type: string
     description: |
@@ -141,6 +150,20 @@ parameters:
       major-upgrade-composable-steps.yaml and major-upgrade-converge.yaml
       environment files.
     default: ''
+  DeploymentServerBlacklistDict:
+    default: {}
+    type: json
+    description: >
+      Map of server hostnames to blacklist from any triggered
+      deployments. If the value is 1, the server will be blacklisted. This
+      parameter is generated from the parent template.
+
+conditions:
+  server_not_blacklisted:
+    not:
+      equals:
+        - {get_param: [DeploymentServerBlacklistDict, {get_param: Hostname}]}
+        - 1
 
 resources:
 
@@ -149,6 +172,7 @@ resources:
     metadata:
       os-collect-config:
         command: {get_param: ConfigCommand}
+        splay: {get_param: ConfigCollectSplay}
     properties:
       image: {get_param: NovaImage}
       image_update_policy:
@@ -374,9 +398,13 @@ resources:
     depends_on: PreNetworkConfig
     properties:
       name: NetworkDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - {get_param: NetworkDeploymentActions}
+          - []
       config: {get_resource: NetworkConfig}
       server: {get_resource: NovaCompute}
-      actions: {get_param: NetworkDeploymentActions}
       input_values:
         bridge_name: {get_param: NeutronPhysicalBridge}
         interface_name: {get_param: NeutronPublicInterface}
@@ -400,6 +428,11 @@ resources:
     depends_on: NetworkDeployment
     properties:
       name: NovaComputeUpgradeInitDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
       server: {get_resource: NovaCompute}
       config: {get_resource: NovaComputeUpgradeInitConfig}
 
@@ -411,6 +444,7 @@ resources:
         hierarchy:
           - '"%{::uuid}"'
           - heat_config_%{::deploy_config_name}
+          - config_step
           - compute_extraconfig
           - extraconfig
           - service_names
@@ -451,6 +485,11 @@ resources:
     depends_on: NovaComputeUpgradeInitDeployment
     properties:
       name: NovaComputeDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
       config: {get_resource: NovaComputeConfig}
       server: {get_resource: NovaCompute}
       input_values:
@@ -486,6 +525,11 @@ resources:
     depends_on: NetworkDeployment
     properties:
       name: UpdateDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
       config: {get_resource: UpdateConfig}
       server: {get_resource: NovaCompute}
       input_values:
@@ -600,3 +644,4 @@ CTLPLANEIP,CTLPLANEHOST.DOMAIN,CTLPLANEHOST HOSTSSHPUBKEY"
     description: Heat resource handle for the Nova compute server
     value:
       {get_resource: NovaCompute}
+    condition: server_not_blacklisted

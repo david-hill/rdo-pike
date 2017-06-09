@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Nova Compute service configured with Puppet
@@ -12,6 +12,14 @@ parameters:
     type: json
   DefaultPasswords:
     default: {}
+    type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
     type: json
   EndpointMap:
     default: {}
@@ -64,7 +72,7 @@ parameters:
     description: >
       Reserved RAM for host processes.
     type: number
-    default: 2048
+    default: 4096
     constraints:
       - range: { min: 512 }
   MonitoringSubscriptionNovaCompute:
@@ -94,6 +102,24 @@ resources:
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
+      RoleName: {get_param: RoleName}
+      RoleParameters: {get_param: RoleParameters}
+
+  # Merging role-specific parameters (RoleParameters) with the default parameters.
+  # RoleParameters will have the precedence over the default parameters.
+  RoleParametersValue:
+    type: OS::Heat::Value
+    properties:
+      type: json
+      value:
+        map_replace:
+          - map_replace:
+            - nova::compute::vcpu_pin_set: NovaVcpuPinSet
+              nova::compute::reserved_host_memory: NovaReservedHostMemory
+            - values: {get_param: [RoleParameters]}
+          - values:
+              NovaVcpuPinSet: {get_param: NovaVcpuPinSet}
+              NovaReservedHostMemory: {get_param: NovaReservedHostMemory}
 
 outputs:
   role_data:
@@ -107,18 +133,27 @@ outputs:
       config_settings:
         map_merge:
           - get_attr: [NovaBase, role_data, config_settings]
+          - get_attr: [RoleParametersValue, value]
           - nova::compute::libvirt::manage_libvirt_services: false
             nova::compute::pci_passthrough:
               str_replace:
                 template: "JSON_PARAM"
                 params:
-                  JSON_PARAM: {get_param: NovaPCIPassthrough}
-            nova::compute::vcpu_pin_set: {get_param: NovaVcpuPinSet}
-            nova::compute::reserved_host_memory: {get_param: NovaReservedHostMemory}
+                  map_replace:
+                    - map_replace:
+                      - JSON_PARAM: NovaPCIPassthrough
+                      - values: {get_param: [RoleParameters]}
+                    - values:
+                        NovaPCIPassthrough: {get_param: NovaPCIPassthrough}
             # we manage migration in nova common puppet profile
             nova::compute::libvirt::migration_support: false
             tripleo::profile::base::nova::manage_migration: true
             tripleo::profile::base::nova::migration_ssh_key: {get_param: MigrationSshKey}
+            tripleo::profile::base::nova::migration_ssh_localaddrs:
+              - "%{hiera('cold_migration_ssh_inbound_addr')}"
+              - "%{hiera('live_migration_ssh_inbound_addr')}"
+            live_migration_ssh_inbound_addr: {get_param: [ServiceNetMap, NovaLibvirtNetwork]}
+            cold_migration_ssh_inbound_addr: {get_param: [ServiceNetMap, NovaColdMigrationNetwork]}
             tripleo::profile::base::nova::nova_compute_enabled: true
             nova::compute::rbd::libvirt_images_rbd_pool: {get_param: NovaRbdPoolName}
             nova::compute::rbd::libvirt_rbd_user: {get_param: CephClientUserName}
@@ -175,6 +210,9 @@ outputs:
               template: "dest=/etc/nova/nova.conf section=upgrade_levels option=compute value=LEVEL"
               params:
                 LEVEL: {get_param: UpgradeLevelNovaCompute}
+        - name: install openstack-nova-migration
+          tags: step3
+          yum: name=openstack-nova-migration state=latest
         - name: Start nova-compute service
           tags: step6
           service: name=openstack-nova-compute state=started

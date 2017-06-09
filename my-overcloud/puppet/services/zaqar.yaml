@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   Openstack Zaqar service. Shared for all Heat services.
@@ -18,9 +18,21 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   Debug:
     default: ''
     description: Set to True to enable debugging on all services.
+    type: string
+  ZaqarDebug:
+    default: ''
+    description: Set to True to enable debugging Zaqar service.
     type: string
   ZaqarPassword:
     description: The password for Zaqar
@@ -46,6 +58,7 @@ parameters:
 
 conditions:
   zaqar_workers_zero: {equals : [{get_param: ZaqarWorkers}, 0]}
+  service_debug_unset: {equals : [{get_param: ZaqarDebug}, '']}
 
 resources:
 
@@ -70,7 +83,11 @@ outputs:
             zaqar::keystone::authtoken::project_name: 'service'
             zaqar::keystone::authtoken::auth_url: {get_param: [EndpointMap, KeystoneInternal, uri_no_suffix]}
             zaqar::keystone::authtoken::auth_uri: {get_param: [EndpointMap, KeystoneInternal, uri]}
-            zaqar::debug: {get_param: Debug}
+            zaqar::debug:
+              if:
+              - service_debug_unset
+              - {get_param: Debug }
+              - {get_param: ZaqarDebug }
             zaqar::server::service_name: 'httpd'
             zaqar::transport::websocket::bind: {get_param: [EndpointMap, ZaqarInternal, host]}
             zaqar::wsgi::apache::ssl: false

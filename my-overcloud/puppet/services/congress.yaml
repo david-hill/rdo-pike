@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Congress service configured with Puppet
@@ -13,6 +13,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -25,6 +33,10 @@ parameters:
   Debug:
     type: string
     default: ''
+  CongressDebug:
+    default: ''
+    description: Set to True to enable debugging Glance service.
+    type: string
   KeystoneRegion:
     type: string
     default: 'regionOne'
@@ -54,6 +66,9 @@ parameters:
     default: {}
     type: json
 
+conditions:
+  service_debug_unset: {equals : [{get_param: CongressDebug}, '']}
+
 outputs:
   role_data:
     description: Role data for the Congress role.
@@ -62,16 +77,20 @@ outputs:
       config_settings:
         congress_password: {get_param: CongressPassword}
         congress::db::database_connection:
-          list_join:
-            - ''
-            - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-              - '://congress:'
-              - {get_param: CongressPassword}
-              - '@'
-              - {get_param: [EndpointMap, MysqlInternal, host]}
-              - '/congress'
-              - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
-        congress::debug: {get_param: Debug}
+          make_url:
+            scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+            username: congress
+            password: {get_param: CongressPassword}
+            host: {get_param: [EndpointMap, MysqlInternal, host]}
+            path: /congress
+            query:
+              read_default_file: /etc/my.cnf.d/tripleo.cnf
+              read_default_group: tripleo
+        congress::debug:
+          if:
+          - service_debug_unset
+          - {get_param: Debug }
+          - {get_param: CongressDebug }
         congress::rpc_backend: rabbit
         congress::rabbit_userid: {get_param: RabbitUserName}
         congress::rabbit_password: {get_param: RabbitPassword}

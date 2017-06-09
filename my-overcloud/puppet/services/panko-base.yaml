@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack Panko service configured with Puppet
@@ -13,6 +13,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -26,10 +34,17 @@ parameters:
     default: ''
     description: Set to True to enable debugging on all services.
     type: string
+  PankoDebug:
+    default: ''
+    description: Set to True to enable debugging Panko services.
+    type: string
   KeystoneRegion:
     type: string
     default: 'regionOne'
     description: Keystone region for endpoint
+
+conditions:
+  service_debug_unset: {equals : [{get_param: PankoDebug}, '']}
 
 outputs:
   role_data:
@@ -38,16 +53,20 @@ outputs:
       service_name: panko_base
       config_settings:
         panko::db::database_connection:
-          list_join:
-            - ''
-            - - {get_param: [EndpointMap, MysqlInternal, protocol]}
-              - '://panko:'
-              - {get_param: PankoPassword}
-              - '@'
-              - {get_param: [EndpointMap, MysqlInternal, host]}
-              - '/panko'
-              - '?read_default_file=/etc/my.cnf.d/tripleo.cnf&read_default_group=tripleo'
-        panko::debug: {get_param: Debug}
+          make_url:
+            scheme: {get_param: [EndpointMap, MysqlInternal, protocol]}
+            username: panko
+            password: {get_param: PankoPassword}
+            host: {get_param: [EndpointMap, MysqlInternal, host]}
+            path: /panko
+            query:
+              read_default_file: /etc/my.cnf.d/tripleo.cnf
+              read_default_group: tripleo
+        panko::debug:
+          if:
+          - service_debug_unset
+          - {get_param: Debug }
+          - {get_param: PankoDebug }
         panko::auth::auth_url: {get_param: [EndpointMap, KeystoneInternal, uri_no_suffix] }
         panko::keystone::authtoken::project_name: 'service'
         panko::keystone::authtoken::user_domain_name: 'Default'

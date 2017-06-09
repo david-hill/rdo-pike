@@ -124,7 +124,7 @@ resource_registry:
   OS::TripleO::Services::Congress: OS::Heat::None
   OS::TripleO::Services::Keystone: puppet/services/keystone.yaml
   OS::TripleO::Services::GlanceApi: puppet/services/glance-api.yaml
-  OS::TripleO::Services::GlanceRegistry: puppet/services/disabled/glance-registry.yaml
+  OS::TripleO::Services::GlanceRegistry: puppet/services/disabled/glance-registry-disabled.yaml
   OS::TripleO::Services::HeatApi: puppet/services/heat-api.yaml
   OS::TripleO::Services::HeatApiCfn: puppet/services/heat-api-cfn.yaml
   OS::TripleO::Services::HeatApiCloudwatch: puppet/services/heat-api-cloudwatch.yaml
@@ -135,6 +135,7 @@ resource_registry:
   OS::TripleO::Services::NeutronDhcpAgent: puppet/services/neutron-dhcp.yaml
   OS::TripleO::Services::NeutronL2gwApi: OS::Heat::None
   OS::TripleO::Services::NeutronL3Agent: puppet/services/neutron-l3.yaml
+  OS::TripleO::Services::NeutronL2gwAgent: OS::Heat::None
   OS::TripleO::Services::NeutronMetadataAgent: puppet/services/neutron-metadata.yaml
   # FIXME(shardy) the duplicate NeutronServer line can be removed when we've updated
   # the multinode job ControllerServices after this patch merges
@@ -153,6 +154,7 @@ resource_registry:
 
   OS::TripleO::Services::NeutronCorePluginMidonet: puppet/services/neutron-midonet.yaml
   OS::TripleO::Services::NeutronOvsAgent: puppet/services/neutron-ovs-agent.yaml
+  OS::TripleO::Services::NeutronLinuxbridgeAgent: OS::Heat::None
   OS::TripleO::Services::ComputeNeutronOvsAgent: puppet/services/neutron-ovs-agent.yaml
   OS::TripleO::Services::Pacemaker: OS::Heat::None
   OS::TripleO::Services::PacemakerRemote: OS::Heat::None
@@ -170,7 +172,7 @@ resource_registry:
   OS::TripleO::Services::Sshd: puppet/services/sshd.yaml
   OS::TripleO::Services::Redis: puppet/services/database/redis.yaml
   OS::TripleO::Services::NovaConductor: puppet/services/nova-conductor.yaml
-  OS::TripleO::Services::MongoDb: puppet/services/database/mongodb.yaml
+  OS::TripleO::Services::MongoDb: puppet/services/disabled/mongodb-disabled.yaml
   OS::TripleO::Services::NovaApi: puppet/services/nova-api.yaml
   OS::TripleO::Services::NovaPlacement: puppet/services/nova-placement.yaml
   OS::TripleO::Services::NovaMetadata: puppet/services/nova-metadata.yaml
@@ -188,17 +190,24 @@ resource_registry:
   OS::TripleO::Services::Tacker: OS::Heat::None
   OS::TripleO::Services::Timezone: puppet/services/time/timezone.yaml
   OS::TripleO::Services::CeilometerApi: puppet/services/ceilometer-api.yaml
-  OS::TripleO::Services::CeilometerCollector: puppet/services/disabled/ceilometer-collector.yaml
-  OS::TripleO::Services::CeilometerExpirer: puppet/services/ceilometer-expirer.yaml
+  OS::TripleO::Services::CeilometerCollector: puppet/services/disabled/ceilometer-collector-disabled.yaml
+  OS::TripleO::Services::CeilometerExpirer: puppet/services/disabled/ceilometer-expirer-disabled.yaml
   OS::TripleO::Services::CeilometerAgentCentral: puppet/services/ceilometer-agent-central.yaml
   OS::TripleO::Services::CeilometerAgentNotification: puppet/services/ceilometer-agent-notification.yaml
   OS::TripleO::Services::ComputeCeilometerAgent: puppet/services/ceilometer-agent-compute.yaml
   OS::TripleO::Services::CeilometerAgentIpmi: puppet/services/ceilometer-agent-ipmi.yaml
   OS::TripleO::Services::Horizon: puppet/services/horizon.yaml
+  # Undercloud Telemetry services
+  OS::TripleO::Services::UndercloudCeilometerAgentCentral: OS::Heat::None
+  OS::TripleO::Services::UndercloudCeilometerAgentNotification: OS::Heat::None
+
   #Gnocchi services
   OS::TripleO::Services::GnocchiApi: puppet/services/gnocchi-api.yaml
   OS::TripleO::Services::GnocchiMetricd: puppet/services/gnocchi-metricd.yaml
   OS::TripleO::Services::GnocchiStatsd: puppet/services/gnocchi-statsd.yaml
+  OS::TripleO::Services::UndercloudGnocchiApi: OS::Heat::None
+  OS::TripleO::Services::UndercloudGnocchiMetricd: OS::Heat::None
+  OS::TripleO::Services::UndercloudGnocchiStatsd: OS::Heat::None
   # Services that are disabled by default (use relevant environment files):
   OS::TripleO::Services::FluentdClient: OS::Heat::None
   OS::TripleO::Services::Collectd: OS::Heat::None
@@ -216,7 +225,12 @@ resource_registry:
   OS::TripleO::Services::AodhEvaluator: puppet/services/aodh-evaluator.yaml
   OS::TripleO::Services::AodhNotifier: puppet/services/aodh-notifier.yaml
   OS::TripleO::Services::AodhListener: puppet/services/aodh-listener.yaml
+  OS::TripleO::Services::UndercloudAodhApi: OS::Heat::None
+  OS::TripleO::Services::UndercloudAodhEvaluator: OS::Heat::None
+  OS::TripleO::Services::UndercloudAodhNotifier: OS::Heat::None
+  OS::TripleO::Services::UndercloudAodhListener: OS::Heat::None
   OS::TripleO::Services::PankoApi: puppet/services/panko-api.yaml
+  OS::TripleO::Services::UndercloudPankoApi: OS::Heat::None
   OS::TripleO::Services::MistralEngine: OS::Heat::None
   OS::TripleO::Services::MistralApi: OS::Heat::None
   OS::TripleO::Services::MistralExecutor: OS::Heat::None
@@ -246,6 +260,7 @@ resource_registry:
   OS::TripleO::Services::OctaviaWorker: OS::Heat::None
   OS::TripleO::Services::MySQLClient: puppet/services/database/mysql-client.yaml
   OS::TripleO::Services::Vpp: OS::Heat::None
+  OS::TripleO::Services::NeutronVppAgent: OS::Heat::None
   OS::TripleO::Services::Docker: OS::Heat::None
   OS::TripleO::Services::CertmongerUser: OS::Heat::None
 

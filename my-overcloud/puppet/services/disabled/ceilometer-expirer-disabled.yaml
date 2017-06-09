@@ -1,7 +1,7 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
-  OpenStack Glance Registry service, disabled since ocata
+  OpenStack Ceilometer Expirer service, disabled since pike
 
 parameters:
   ServiceNetMap:
@@ -13,6 +13,14 @@ parameters:
   DefaultPasswords:
     default: {}
     type: json
+  RoleName:
+    default: ''
+    description: Role name on which the service is applied
+    type: string
+  RoleParameters:
+    default: {}
+    description: Parameters specific to the role
+    type: json
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
@@ -21,10 +29,10 @@ parameters:
 
 outputs:
   role_data:
-    description: Role data for the disabled Glance Registry role.
+    description: Role data for the disabling Ceilometer Expirer role.
     value:
-      service_name: glance_registry
+      service_name: ceilometer_expirer_disabled
       upgrade_tasks:
-        - name: Stop and disable glance_registry service on upgrade
+        - name: Remove ceilometer expirer cron tab on upgrade
           tags: step1
-          service: name=openstack-glance-registry state=stopped enabled=no
+          shell: '/usr/bin/crontab -u ceilometer -r'

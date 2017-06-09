@@ -1,4 +1,4 @@
-heat_template_version: ocata
+heat_template_version: pike
 
 description: >
   OpenStack controller node configured by Puppet.
@@ -141,6 +141,15 @@ parameters:
     type: string
     description: Command which will be run whenever configuration data changes
     default: os-refresh-config --timeout 14400
+  ConfigCollectSplay:
+    type: number
+    default: 30
+    description: |
+      Maximum amount of time to possibly to delay configuation collection
+      polling. Defaults to 30 seconds. Set to 0 to disable it which will cause
+      the configuration collection to occur as soon as the collection process
+      starts.  This setting is used to prevent the configuration collection
+      processes from polling all at the exact same time.
   UpgradeInitCommand:
     type: string
     description: |
@@ -155,12 +164,27 @@ parameters:
       major-upgrade-composable-steps.yaml and major-upgrade-converge.yaml
       environment files.
     default: ''
+  DeploymentServerBlacklistDict:
+    default: {}
+    type: json
+    description: >
+      Map of server hostnames to blacklist from any triggered
+      deployments. If the value is 1, the server will be blacklisted. This
+      parameter is generated from the parent template.
 
 parameter_groups:
 - label: deprecated
   description: Do not use deprecated params, they will be removed.
   parameters:
   - controllerExtraConfig
+
+conditions:
+  server_not_blacklisted:
+    not:
+      equals:
+        - {get_param: [DeploymentServerBlacklistDict, {get_param: Hostname}]}
+        - 1
+
 
 resources:
 
@@ -169,6 +193,7 @@ resources:
     metadata:
       os-collect-config:
         command: {get_param: ConfigCommand}
+        splay: {get_param: ConfigCollectSplay}
     properties:
       image: {get_param: controllerImage}
       image_update_policy: {get_param: ImageUpdatePolicy}
@@ -395,7 +420,11 @@ resources:
       name: NetworkDeployment
       config: {get_resource: NetworkConfig}
       server: {get_resource: Controller}
-      actions: {get_param: NetworkDeploymentActions}
+      actions:
+        if:
+          - server_not_blacklisted
+          - {get_param: NetworkDeploymentActions}
+          - []
       input_values:
         bridge_name: br-ex
         interface_name: {get_param: NeutronPublicInterface}
@@ -434,6 +463,11 @@ resources:
     depends_on: NetworkDeployment
     properties:
       name: ControllerUpgradeInitDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
       server: {get_resource: Controller}
       config: {get_resource: ControllerUpgradeInitConfig}
 
@@ -442,6 +476,11 @@ resources:
     depends_on: ControllerUpgradeInitDeployment
     properties:
       name: ControllerDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
       config: {get_resource: ControllerConfig}
       server: {get_resource: Controller}
       input_values:
@@ -458,6 +497,7 @@ resources:
         hierarchy:
           - '"%{::uuid}"'
           - heat_config_%{::deploy_config_name}
+          - config_step
           - controller_extraconfig
           - extraconfig
           - service_configs
@@ -525,6 +565,11 @@ resources:
     depends_on: NetworkDeployment
     properties:
       name: UpdateDeployment
+      actions:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
       config: {get_resource: UpdateConfig}
       server: {get_resource: Controller}
       input_values:
@@ -639,6 +684,7 @@ CTLPLANEIP,CTLPLANEHOST.DOMAIN,CTLPLANEHOST HOSTSSHPUBKEY"
     description: Heat resource handle for the Nova compute server
     value:
       {get_resource: Controller}
+    condition: server_not_blacklisted
   tls_key_modulus_md5:
     description: MD5 checksum of the TLS Key Modulus
     value: {get_attr: [NodeTLSData, key_modulus_md5]}

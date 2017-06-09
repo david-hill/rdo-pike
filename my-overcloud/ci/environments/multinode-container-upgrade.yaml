@@ -1,11 +1,18 @@
-# NOTE: This is an environment specific for containers upgrade
-# CI. Mainly we deploy non-pacemakerized overcloud, as at the time
-# being containerization of services managed by pacemaker is not
-# complete, so we deploy and upgrade the non-HA services for now.
+# NOTE: This is an environment specific for containers CI. Mainly we
+# deploy non-pacemakerized overcloud. Once we are able to deploy and
+# upgrade pacemakerized and containerized overcloud, we should remove
+# this file and use normal CI multinode environments/scenarios.
 
 resource_registry:
   OS::TripleO::Controller::Net::SoftwareConfig: ../common/net-config-multinode-os-net-config.yaml
   OS::TripleO::Compute::Net::SoftwareConfig: ../common/net-config-multinode-os-net-config.yaml
+
+  # NOTE: This is needed because of upgrades from Ocata to Pike. We
+  # deploy the initial environment with Ocata templates, and
+  # overcloud-resource-registry.yaml there doesn't have this Docker
+  # mapping at all. After we stop CI'ing Ocata->Pike upgrade, we can
+  # remove this.
+  OS::TripleO::Services::Docker: OS::Heat::None
 
 parameter_defaults:
   ControllerServices:
@@ -46,6 +53,7 @@ parameter_defaults:
     - OS::TripleO::Services::SwiftRingBuilder
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::Timezone
+    - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::NovaCompute
     - OS::TripleO::Services::NovaLibvirt
     - OS::TripleO::Services::Sshd
