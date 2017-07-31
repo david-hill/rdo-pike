@@ -4,6 +4,10 @@ description: >
   OpenStack Nova base service. Shared for all Nova services.
 
 parameters:
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
+    type: json
   ServiceNetMap:
     default: {}
     description: Mapping of service_name -> network name. Typically set
@@ -30,8 +34,14 @@ parameters:
     type: string
     default: 'regionOne'
     description: Keystone region for endpoint
+  NotificationDriver:
+    type: string
+    default: 'messagingv2'
+    description: Driver or drivers to handle sending notifications.
+    constraints:
+      - allowed_values: [ 'messagingv2', 'noop' ]
   NovaPassword:
-    description: The password for the nova service and db account, used by nova-api.
+    description: The password for the nova service and db account
     type: string
     hidden: true
   NeutronPassword:
@@ -215,7 +225,7 @@ outputs:
           nova::cinder_catalog_info: 'volumev2:cinderv2:internalURL'
           nova::host: '%{::fqdn}'
           nova::notify_on_state_change: 'vm_and_task_state'
-          nova::notification_driver: messagingv2
+          nova::notification_driver: {get_param: NotificationDriver}
           nova::network::neutron::neutron_auth_type: 'v3password'
           nova::db::database_db_max_retries: -1
           nova::db::database_max_retries: -1

@@ -4,6 +4,10 @@ description: >
   TripleO Package installation settings
 
 parameters:
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
+    type: json
   ServiceNetMap:
     default: {}
     description: Mapping of service_name -> network name. Typically set
@@ -28,7 +32,7 @@ parameters:
     type: json
   EnablePackageInstall:
     default: 'false'
-    description: Set to true to enable package installation via Puppet
+    description: Set to true to enable package installation at deploy time
     type: boolean
 
 outputs:

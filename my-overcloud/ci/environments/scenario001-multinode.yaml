@@ -21,6 +21,9 @@ resource_registry:
   OS::TripleO::Tasks::ControllerPostPuppetRestart: ../../extraconfig/tasks/post_puppet_pacemaker_restart.yaml
   OS::TripleO::Services::FluentdClient: ../../puppet/services/logging/fluentd-client.yaml
   OS::TripleO::Services::SensuClient: ../../puppet/services/monitoring/sensu-client.yaml
+  # Some infra instances don't pass the ping test but are otherwise working.
+  # Since the OVB jobs also test this functionality we can shut it off here.
+  OS::TripleO::AllNodes::Validation: ../common/all-nodes-validation-disabled.yaml
 
 parameter_defaults:
   ControllerServices:
@@ -57,6 +60,7 @@ parameter_defaults:
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::NovaCompute
     - OS::TripleO::Services::NovaLibvirt
+    - OS::TripleO::Services::NovaMigrationTarget
     - OS::TripleO::Services::MongoDb
     - OS::TripleO::Services::Redis
     - OS::TripleO::Services::AodhApi
@@ -84,6 +88,7 @@ parameter_defaults:
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::FluentdClient
     - OS::TripleO::Services::SensuClient
+    - OS::TripleO::Services::Iscsid
 
   ControllerExtraConfig:
     nova::compute::libvirt::services::libvirt_virt_type: qemu

@@ -4,23 +4,21 @@ description: >
   OpenStack containerized Heat API CFN service
 
 parameters:
-  DockerNamespace:
-    description: namespace
-    default: 'tripleoupstream'
-    type: string
   DockerHeatApiCfnImage:
     description: image
-    default: 'centos-binary-heat-api-cfn:latest'
     type: string
   # puppet needs the heat-wsgi-api-cfn binary from centos-binary-heat-api-cfn
-  DockerHeatConfigImage:
-    description: image
-    default: 'centos-binary-heat-api-cfn:latest'
+  DockerHeatApiCfnConfigImage:
+    description: The container image to use for the heat_api_cfn config_volume
     type: string
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
                  via parameter_defaults in the resource registry.
+    type: json
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
     type: json
   ServiceNetMap:
     default: {}
@@ -56,6 +54,7 @@ resources:
     type: ../../puppet/services/heat-api-cfn.yaml
     properties:
       EndpointMap: {get_param: EndpointMap}
+      ServiceData: {get_param: ServiceData}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       RoleName: {get_param: RoleName}
@@ -78,13 +77,15 @@ outputs:
         config_volume: heat_api_cfn
         puppet_tags: heat_config,file,concat,file_line
         step_config: *step_config
-        config_image:
-          list_join:
-            - '/'
-            - [ {get_param: DockerNamespace}, {get_param: DockerHeatConfigImage} ]
+        config_image: {get_param: DockerHeatApiCfnConfigImage}
       kolla_config:
         /var/lib/kolla/config_files/heat_api_cfn.json:
           command: /usr/sbin/httpd -DFOREGROUND
+          config_files:
+            - source: "/var/lib/kolla/config_files/src/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
           permissions:
             - path: /var/log/heat
               owner: heat:heat
@@ -92,10 +93,7 @@ outputs:
       docker_config:
         step_4:
           heat_api_cfn:
-            image:
-              list_join:
-                - '/'
-                - [ {get_param: DockerNamespace}, {get_param: DockerHeatApiCfnImage} ]
+            image: {get_param: DockerHeatApiCfnImage}
             net: host
             privileged: false
             restart: always
@@ -107,9 +105,7 @@ outputs:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
                   - /var/lib/kolla/config_files/heat_api_cfn.json:/var/lib/kolla/config_files/config.json:ro
-                  - /var/lib/config-data/heat_api_cfn/etc/heat/:/etc/heat/:ro
-                  - /var/lib/config-data/heat_api_cfn/etc/httpd/:/etc/httpd/:ro
-                  - /var/lib/config-data/heat_api_cfn/var/www/:/var/www/:ro
+                  - /var/lib/config-data/puppet-generated/heat_api_cfn/:/var/lib/kolla/config_files/src:ro
                   - /var/log/containers/heat:/var/log/heat
                   -
                     if:
@@ -129,8 +125,25 @@ outputs:
             path: /var/log/containers/heat
             state: directory
       upgrade_tasks:
-        - name: Stop and disable heat_api_cfn service
+        - name: Check if heat_api_cfn is deployed
+          command: systemctl is-enabled openstack-heat-api-cfn
+          tags: common
+          ignore_errors: True
+          register: heat_api_cfn_enabled
+        - name: check for heat_api_cfn running under apache (post upgrade)
           tags: step2
-          service: name=httpd state=stopped enabled=no
+          shell: "httpd -t -D DUMP_VHOSTS | grep -q heat_api_cfn_wsgi"
+          register: heat_api_cfn_apache
+          ignore_errors: true
+          changed_when: false
+          check_mode: no
+        - name: Stop heat_api_cfn service (running under httpd)
+          tags: step2
+          service: name=httpd state=stopped
+          when: heat_api_cfn_apache.rc == 0
+        - name: Stop and disable heat_api_cfn service (pre-upgrade not under httpd)
+          tags: step2
+          service: name=openstack-heat-api-cfn state=stopped enabled=no
+          when: heat_api_cfn_enabled.rc == 0
       metadata_settings:
         get_attr: [HeatBase, role_data, metadata_settings]

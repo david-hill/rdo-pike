@@ -69,6 +69,10 @@ parameters:
         networks, neutron uses this value without modification. For overlay
         networks such as VXLAN, neutron automatically subtracts the overlay
         protocol overhead from this value.
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
+    type: json
   ServiceNetMap:
     default: {}
     description: Mapping of service_name -> network name. Typically set
@@ -91,6 +95,12 @@ parameters:
     description: Mapping of service endpoint -> protocol. Typically set
                  via parameter_defaults in the resource registry.
     type: json
+  NotificationDriver:
+    type: string
+    default: 'messagingv2'
+    description: Driver or drivers to handle sending notifications.
+    constraints:
+      - allowed_values: [ 'messagingv2', 'noop' ]
 
 conditions:
   dhcp_agents_zero: {equals : [{get_param: NeutronDhcpAgentsPerNetwork}, 0]}
@@ -107,6 +117,7 @@ outputs:
             neutron::rabbit_user: {get_param: RabbitUserName}
             neutron::rabbit_use_ssl: {get_param: RabbitClientUseSSL}
             neutron::rabbit_port: {get_param: RabbitClientPort}
+            neutron::notification_driver: {get_param: NotificationDriver}
             neutron::core_plugin: {get_param: NeutronCorePlugin}
             neutron::service_plugins: {get_param: NeutronServicePlugins}
             neutron::debug:

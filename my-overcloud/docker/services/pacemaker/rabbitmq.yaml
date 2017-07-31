@@ -4,18 +4,20 @@ description: >
   OpenStack containerized Rabbitmq service
 
 parameters:
-  DockerNamespace:
-    description: namespace
-    default: 'tripleoupstream'
-    type: string
   DockerRabbitmqImage:
     description: image
-    default: 'centos-binary-rabbitmq:latest'
+    type: string
+  DockerRabbitmqConfigImage:
+    description: The container image to use for the rabbitmq config_volume
     type: string
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
                  via parameter_defaults in the resource registry.
+    type: json
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
     type: json
   ServiceNetMap:
     default: {}
@@ -45,6 +47,7 @@ resources:
     type: ../../../puppet/services/rabbitmq.yaml
     properties:
       EndpointMap: {get_param: EndpointMap}
+      ServiceData: {get_param: ServiceData}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       RoleName: {get_param: RoleName}
@@ -59,11 +62,15 @@ outputs:
         map_merge:
           - {get_attr: [RabbitmqBase, role_data, config_settings]}
           - rabbitmq::service_manage: false
-            tripleo::profile::pacemaker::rabbitmq_bundle::rabbitmq_docker_image: &rabbitmq_image
-              list_join:
-                - '/'
-                - - {get_param: DockerNamespace}
-                  - {get_param: DockerRabbitmqImage}
+            tripleo::profile::pacemaker::rabbitmq_bundle::rabbitmq_docker_image: &rabbitmq_image {get_param: DockerRabbitmqImage}
+            tripleo::profile::pacemaker::rabbitmq_bundle::control_port: 3122
+            tripleo.rabbitmq.firewall_rules:
+              '109 rabbitmq-bundle':
+                dport:
+                  - 3122
+                  - 4369
+                  - 5672
+                  - 25672
       step_config: &step_config
         get_attr: [RabbitmqBase, role_data, step_config]
       service_config_settings: {get_attr: [RabbitmqBase, role_data, service_config_settings]}
@@ -72,7 +79,7 @@ outputs:
         config_volume: rabbitmq
         puppet_tags: file
         step_config: *step_config
-        config_image: *rabbitmq_image
+        config_image: {get_param: DockerRabbitmqConfigImage}
       kolla_config:
         /var/lib/kolla/config_files/rabbitmq.json:
           command: /usr/sbin/pacemaker_remoted
@@ -81,6 +88,10 @@ outputs:
             source: /dev/null
             owner: root
             perm: '0644'
+          - source: "/var/lib/kolla/config_files/src/*"
+            dest: "/"
+            merge: true
+            preserve_properties: true
           permissions:
            - path: /var/lib/rabbitmq
              owner: rabbitmq:rabbitmq
@@ -99,7 +110,7 @@ outputs:
             privileged: false
             volumes:
               - /var/lib/kolla/config_files/rabbitmq.json:/var/lib/kolla/config_files/config.json:ro
-              - /var/lib/config-data/rabbitmq/etc/rabbitmq:/etc/rabbitmq:ro
+              - /var/lib/config-data/puppet-generated/rabbitmq/:/var/lib/kolla/config_files/src:ro
               - /etc/hosts:/etc/hosts:ro
               - /etc/localtime:/etc/localtime:ro
               - /var/lib/rabbitmq:/var/lib/rabbitmq
@@ -154,6 +165,27 @@ outputs:
             echo 'export ERL_EPMD_PORT=4370' >> /etc/rabbitmq/rabbitmq-env.conf
             for pid in $(pgrep epmd); do if [ "$(lsns -o NS -p $pid)" == "$(lsns -o NS -p 1)" ]; then kill $pid; break; fi; done
       upgrade_tasks:
-        - name: Stop and disable rabbitmq service
+        - name: get bootstrap nodeid
+          tags: common
+          command: hiera -c /etc/puppet/hiera.yaml bootstrap_nodeid
+          register: bootstrap_node
+        - name: set is_bootstrap_node fact
+          tags: common
+          set_fact: is_bootstrap_node={{bootstrap_node.stdout|lower == ansible_hostname|lower}}
+        - name: Disable the rabbitmq cluster resource.
           tags: step2
-          service: name=rabbitmq-server state=stopped enabled=no
+          pacemaker_resource:
+            resource: {get_attr: [RabbitmqBase, role_data, service_name]}
+            state: disable
+            wait_for_resource: true
+          when: is_bootstrap_node
+        - name: Delete the stopped rabbitmq cluster resource.
+          tags: step2
+          pacemaker_resource:
+            resource: {get_attr: [RabbitmqBase, role_data, service_name]}
+            state: delete
+            wait_for_resource: true
+          when: is_bootstrap_node
+        - name: Disable rabbitmq service
+          tags: step2
+          service: name=rabbitmq-server enabled=no

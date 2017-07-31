@@ -4,10 +4,12 @@ resource_registry:
   OS::TripleO::PostDeploySteps: puppet/post.yaml
   OS::TripleO::PostUpgradeSteps: puppet/post-upgrade.yaml
   OS::TripleO::AllNodes::SoftwareConfig: puppet/all-nodes-config.yaml
+  OS::TripleO::AllNodesDeployment: OS::Heat::StructuredDeployments
   OS::TripleO::Hosts::SoftwareConfig: hosts-config.yaml
   OS::TripleO::Ssh::HostPubKey: extraconfig/tasks/ssh/host_public_key.yaml
   OS::TripleO::Ssh::KnownHostsConfig: extraconfig/tasks/ssh/known_hosts_config.yaml
   OS::TripleO::DefaultPasswords: default_passwords.yaml
+  OS::TripleO::RandomString: OS::Heat::RandomString
 
   # Tasks (for internal TripleO usage)
   OS::TripleO::Tasks::UpdateWorkflow: OS::Heat::None
@@ -105,8 +107,10 @@ resource_registry:
   # Upgrade resources
   OS::TripleO::UpgradeConfig: puppet/upgrade_config.yaml
 
+  OS::TripleO::DeployedServerEnvironment: OS::Heat::None
+
   # services
-  OS::TripleO::Services: puppet/services/services.yaml
+  OS::TripleO::Services: common/services.yaml
   OS::TripleO::Services::Apache: puppet/services/apache.yaml
   OS::TripleO::Services::CACerts: puppet/services/ca-certs.yaml
   OS::TripleO::Services::CephMds: OS::Heat::None
@@ -136,6 +140,7 @@ resource_registry:
   OS::TripleO::Services::NeutronL2gwApi: OS::Heat::None
   OS::TripleO::Services::NeutronL3Agent: puppet/services/neutron-l3.yaml
   OS::TripleO::Services::NeutronL2gwAgent: OS::Heat::None
+  OS::TripleO::Services::NeutronLbaasv2Agent: OS::Heat::None
   OS::TripleO::Services::NeutronMetadataAgent: puppet/services/neutron-metadata.yaml
   # FIXME(shardy) the duplicate NeutronServer line can be removed when we've updated
   # the multinode job ControllerServices after this patch merges
@@ -156,6 +161,7 @@ resource_registry:
   OS::TripleO::Services::NeutronOvsAgent: puppet/services/neutron-ovs-agent.yaml
   OS::TripleO::Services::NeutronLinuxbridgeAgent: OS::Heat::None
   OS::TripleO::Services::ComputeNeutronOvsAgent: puppet/services/neutron-ovs-agent.yaml
+  OS::TripleO::Services::ComputeNeutronOvsDpdk: OS::Heat::None
   OS::TripleO::Services::Pacemaker: OS::Heat::None
   OS::TripleO::Services::PacemakerRemote: OS::Heat::None
   OS::TripleO::Services::NeutronSriovAgent: OS::Heat::None
@@ -164,10 +170,12 @@ resource_registry:
   OS::TripleO::Services::HAproxy: puppet/services/haproxy.yaml
   OS::TripleO::Services::HAProxyPublicTLS: OS::Heat::None
   OS::TripleO::Services::HAProxyInternalTLS: OS::Heat::None
+  OS::TripleO::Services::Iscsid: puppet/services/iscsid.yaml
   OS::TripleO::Services::Keepalived: puppet/services/keepalived.yaml
   OS::TripleO::Services::Memcached: puppet/services/memcached.yaml
   OS::TripleO::Services::SaharaApi: OS::Heat::None
   OS::TripleO::Services::SaharaEngine: OS::Heat::None
+  OS::TripleO::Services::Tuned: puppet/services/tuned.yaml
   OS::TripleO::Services::Securetty: OS::Heat::None
   OS::TripleO::Services::Sshd: puppet/services/sshd.yaml
   OS::TripleO::Services::Redis: puppet/services/database/redis.yaml
@@ -181,6 +189,7 @@ resource_registry:
   OS::TripleO::Services::NovaVncProxy: puppet/services/nova-vnc-proxy.yaml
   OS::TripleO::Services::NovaCompute: puppet/services/nova-compute.yaml
   OS::TripleO::Services::NovaLibvirt: puppet/services/nova-libvirt.yaml
+  OS::TripleO::Services::NovaMigrationTarget: puppet/services/nova-migration-target.yaml
   OS::TripleO::Services::Ntp: puppet/services/time/ntp.yaml
   OS::TripleO::Services::SwiftProxy: puppet/services/swift-proxy.yaml
   OS::TripleO::Services::ExternalSwiftProxy: OS::Heat::None
@@ -189,7 +198,7 @@ resource_registry:
   OS::TripleO::Services::Snmp: puppet/services/snmp.yaml
   OS::TripleO::Services::Tacker: OS::Heat::None
   OS::TripleO::Services::Timezone: puppet/services/time/timezone.yaml
-  OS::TripleO::Services::CeilometerApi: puppet/services/ceilometer-api.yaml
+  OS::TripleO::Services::CeilometerApi: puppet/services/disabled/ceilometer-api-disabled.yaml
   OS::TripleO::Services::CeilometerCollector: puppet/services/disabled/ceilometer-collector-disabled.yaml
   OS::TripleO::Services::CeilometerExpirer: puppet/services/disabled/ceilometer-expirer-disabled.yaml
   OS::TripleO::Services::CeilometerAgentCentral: puppet/services/ceilometer-agent-central.yaml
@@ -200,6 +209,7 @@ resource_registry:
   # Undercloud Telemetry services
   OS::TripleO::Services::UndercloudCeilometerAgentCentral: OS::Heat::None
   OS::TripleO::Services::UndercloudCeilometerAgentNotification: OS::Heat::None
+  OS::TripleO::Services::UndercloudCeilometerAgentIpmi: OS::Heat::None
 
   #Gnocchi services
   OS::TripleO::Services::GnocchiApi: puppet/services/gnocchi-api.yaml
@@ -236,6 +246,7 @@ resource_registry:
   OS::TripleO::Services::MistralExecutor: OS::Heat::None
   OS::TripleO::Services::IronicApi: OS::Heat::None
   OS::TripleO::Services::IronicConductor: OS::Heat::None
+  OS::TripleO::Services::IronicInspector: OS::Heat::None
   OS::TripleO::Services::NovaIronic: OS::Heat::None
   OS::TripleO::Services::TripleoPackages: puppet/services/tripleo-packages.yaml
   OS::TripleO::Services::TripleoFirewall: puppet/services/tripleo-firewall.yaml
@@ -250,6 +261,7 @@ resource_registry:
   OS::TripleO::Services::CinderBackendDellSc: OS::Heat::None
   OS::TripleO::Services::CinderBackendNetApp: OS::Heat::None
   OS::TripleO::Services::CinderBackendScaleIO: OS::Heat::None
+  OS::TripleO::Services::CinderBackendVRTSHyperScale: OS::Heat::None
   OS::TripleO::Services::CinderHPELeftHandISCSI: OS::Heat::None
   OS::TripleO::Services::Etcd: OS::Heat::None
   OS::TripleO::Services::Ec2Api: OS::Heat::None
@@ -263,6 +275,9 @@ resource_registry:
   OS::TripleO::Services::NeutronVppAgent: OS::Heat::None
   OS::TripleO::Services::Docker: OS::Heat::None
   OS::TripleO::Services::CertmongerUser: OS::Heat::None
+  OS::TripleO::Services::Iscsid: OS::Heat::None
+  OS::TripleO::Services::Clustercheck: OS::Heat::None
+  OS::TripleO::Services::VRTSHyperScale: OS::Heat::None
 
 parameter_defaults:
   EnablePackageInstall: false

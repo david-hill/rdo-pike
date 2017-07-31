@@ -4,14 +4,16 @@ description: >
   OpenStack containerized Nova Compute service
 
 parameters:
-  DockerNamespace:
-    description: namespace
-    default: 'tripleoupstream'
-    type: string
   DockerNovaComputeImage:
     description: image
-    default: 'centos-binary-nova-compute:latest'
     type: string
+  DockerNovaLibvirtConfigImage:
+    description: The container image to use for the nova_libvirt config_volume
+    type: string
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
+    type: json
   ServiceNetMap:
     default: {}
     description: Mapping of service_name -> network name. Typically set
@@ -34,6 +36,11 @@ parameters:
     description: Mapping of service endpoint -> protocol. Typically set
                  via parameter_defaults in the resource registry.
     type: json
+  DockerNovaMigrationSshdPort:
+    default: 2022
+    description: Port that dockerized nova migration target sshd service
+                 binds to.
+    type: number
 
 resources:
 
@@ -44,10 +51,12 @@ resources:
     type: ../../puppet/services/nova-compute.yaml
     properties:
       EndpointMap: {get_param: EndpointMap}
+      ServiceData: {get_param: ServiceData}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       RoleName: {get_param: RoleName}
       RoleParameters: {get_param: RoleParameters}
+      MigrationSshPort: {get_param: DockerNovaMigrationSshdPort}
 
 outputs:
   role_data:
@@ -55,27 +64,30 @@ outputs:
     value:
       service_name: {get_attr: [NovaComputeBase, role_data, service_name]}
       config_settings:
-        map_merge:
-          - get_attr: [NovaComputeBase, role_data, config_settings]
-          # FIXME: we need to disable migration for now as the
-          # hieradata is common for all services, and this means nova
-          # and nova_placement puppet runs also try to configure
-          # libvirt, and they fail. We can remove this override when
-          # we have hieradata separation between containers.
-          - tripleo::profile::base::nova::manage_migration: false
+        get_attr: [NovaComputeBase, role_data, config_settings]
       step_config: &step_config
         get_attr: [NovaComputeBase, role_data, step_config]
       puppet_config:
         config_volume: nova_libvirt
         puppet_tags: nova_config,nova_paste_api_ini
         step_config: *step_config
-        config_image: &nova_compute_image
-          list_join:
-          - '/'
-          - [ {get_param: DockerNamespace}, {get_param: DockerNovaComputeImage} ]
+        config_image: {get_param: DockerNovaLibvirtConfigImage}
       kolla_config:
         /var/lib/kolla/config_files/nova_compute.json:
           command: /usr/bin/nova-compute --config-file /etc/nova/nova.conf --config-file /etc/nova/rootwrap.conf
+          config_files:
+            - source: "/var/lib/kolla/config_files/src/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
+            - source: "/var/lib/kolla/config_files/src-iscsid/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
+            - source: "/var/lib/kolla/config_files/src-ceph/"
+              dest: "/etc/ceph/"
+              merge: true
+              preserve_properties: true
           permissions:
             - path: /var/log/nova
               owner: nova:nova
@@ -87,7 +99,7 @@ outputs:
         # FIXME: run discover hosts here
         step_4:
           nova_compute:
-            image: *nova_compute_image
+            image: &nova_compute_image {get_param: DockerNovaComputeImage}
             net: host
             privileged: true
             user: nova
@@ -97,14 +109,17 @@ outputs:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
                   - /var/lib/kolla/config_files/nova_compute.json:/var/lib/kolla/config_files/config.json:ro
-                  - /var/lib/config-data/nova_libvirt/etc/nova/:/etc/nova/:ro
+                  - /var/lib/config-data/puppet-generated/nova_libvirt/:/var/lib/kolla/config_files/src:ro
+                  - /var/lib/config-data/puppet-generated/iscsid/:/var/lib/kolla/config_files/src-iscsid:ro
+                  - /etc/ceph:/var/lib/kolla/config_files/src-ceph:ro
                   - /dev:/dev
-                  - /etc/iscsi:/etc/iscsi
                   - /lib/modules:/lib/modules:ro
                   - /run:/run
                   - /var/lib/nova:/var/lib/nova
                   - /var/lib/libvirt:/var/lib/libvirt
                   - /var/log/containers/nova:/var/log/nova
+                  - /sys/class/net:/sys/class/net
+                  - /sys/bus/pci:/sys/bus/pci
             environment:
              - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
       host_prep_tasks:
@@ -116,6 +131,10 @@ outputs:
             - /var/log/containers/nova
             - /var/lib/nova
             - /var/lib/libvirt
+        - name: ensure ceph configurations exist
+          file:
+            path: /etc/ceph
+            state: directory
       upgrade_tasks:
         - name: Stop and disable nova-compute service
           tags: step2

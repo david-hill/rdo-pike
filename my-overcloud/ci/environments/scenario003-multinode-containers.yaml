@@ -6,17 +6,21 @@
 resource_registry:
   OS::TripleO::Controller::Net::SoftwareConfig: ../common/net-config-multinode.yaml
   OS::TripleO::Compute::Net::SoftwareConfig: ../common/net-config-multinode.yaml
-  OS::TripleO::Services::SaharaApi: ../../puppet/services/sahara-api.yaml
-  OS::TripleO::Services::SaharaEngine: ../../puppet/services/sahara-engine.yaml
-  OS::TripleO::Services::MistralApi: ../../puppet/services/mistral-api.yaml
-  OS::TripleO::Services::MistralEngine: ../../puppet/services/mistral-engine.yaml
-  OS::TripleO::Services::MistralExecutor: ../../puppet/services/mistral-executor.yaml
+  OS::TripleO::Services::SaharaApi: ../../docker/services/sahara-api.yaml
+  OS::TripleO::Services::SaharaEngine: ../../docker/services/sahara-engine.yaml
+  OS::TripleO::Services::MistralApi: ../../docker/services/mistral-api.yaml
+  OS::TripleO::Services::MistralEngine: ../../docker/services/mistral-engine.yaml
+  OS::TripleO::Services::MistralExecutor: ../../docker/services/mistral-executor.yaml
   # NOTE: This is needed because of upgrades from Ocata to Pike. We
   # deploy the initial environment with Ocata templates, and
   # overcloud-resource-registry.yaml there doesn't have this Docker
   # mapping at all. After we stop CI'ing Ocata->Pike upgrade, we can
   # remove this.
   OS::TripleO::Services::Docker: OS::Heat::None
+  # Some infra instances don't pass the ping test but are otherwise working.
+  # Since the OVB jobs also test this functionality we can shut it off here.
+  OS::TripleO::AllNodes::Validation: ../common/all-nodes-validation-disabled.yaml
+  OS::TripleO::Services::NovaMigrationTarget: OS::Heat::None
 
 parameter_defaults:
   ControllerServices:
@@ -59,6 +63,7 @@ parameter_defaults:
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::Sshd
+    - OS::TripleO::Services::Iscsid
   ControllerExtraConfig:
     nova::compute::libvirt::services::libvirt_virt_type: qemu
     nova::compute::libvirt::libvirt_virt_type: qemu
@@ -67,3 +72,4 @@ parameter_defaults:
   GlanceBackend: 'file'
   KeystoneTokenProvider: 'fernet'
   SwiftCeilometerPipelineEnabled: false
+  NotificationDriver: 'noop'

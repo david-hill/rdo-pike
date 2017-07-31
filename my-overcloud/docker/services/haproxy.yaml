@@ -4,14 +4,16 @@ description: >
   OpenStack containerized HAproxy service
 
 parameters:
-  DockerNamespace:
-    description: namespace
-    default: 'tripleoupstream'
-    type: string
   DockerHAProxyImage:
     description: image
-    default: 'centos-binary-haproxy:latest'
     type: string
+  DockerHAProxyConfigImage:
+    description: The container image to use for the haproxy config_volume
+    type: string
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
+    type: json
   ServiceNetMap:
     default: {}
     description: Mapping of service_name -> network name. Typically set
@@ -38,8 +40,13 @@ parameters:
     default: /dev/log
     description: Syslog address where HAproxy will send its log
     type: string
+  DeployedSSLCertificatePath:
+    default: '/etc/pki/tls/private/overcloud_endpoint.pem'
+    description: >
+        The filepath of the certificate as it will be stored in the controller.
+    type: string
   RedisPassword:
-    description: The password for Redis
+    description: The password for the redis service account.
     type: string
     hidden: true
   MonitoringSubscriptionHaproxy:
@@ -63,6 +70,7 @@ resources:
     type: ../../puppet/services/haproxy.yaml
     properties:
       EndpointMap: {get_param: EndpointMap}
+      ServiceData: {get_param: ServiceData}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       RoleName: {get_param: RoleName}
@@ -85,26 +93,35 @@ outputs:
         config_volume: haproxy
         puppet_tags: haproxy_config
         step_config: *step_config
-        config_image: &haproxy_image
-          list_join:
-            - '/'
-            - [ {get_param: DockerNamespace}, {get_param: DockerHAProxyImage} ]
+        config_image: {get_param: DockerHAProxyConfigImage}
+        volumes: &deployed_cert_mount
+          - list_join:
+            - ':'
+            - - {get_param: DeployedSSLCertificatePath}
+              - {get_param: DeployedSSLCertificatePath}
+              - 'ro'
       kolla_config:
         /var/lib/kolla/config_files/haproxy.json:
           command: haproxy -f /etc/haproxy/haproxy.cfg
+          config_files:
+            - source: "/var/lib/kolla/config_files/src/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
       docker_config:
         step_1:
           haproxy:
-            image: *haproxy_image
+            image: {get_param: DockerHAProxyImage}
             net: host
             privileged: false
             restart: always
             volumes:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
+                - *deployed_cert_mount
                 -
                   - /var/lib/kolla/config_files/haproxy.json:/var/lib/kolla/config_files/config.json:ro
-                  - /var/lib/config-data/haproxy/etc/:/etc/:ro
+                  - /var/lib/config-data/puppet-generated/haproxy/:/var/lib/kolla/config_files/src:ro
             environment:
               - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
       metadata_settings:

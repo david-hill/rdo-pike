@@ -6,21 +6,27 @@
 resource_registry:
   OS::TripleO::Controller::Net::SoftwareConfig: ../common/net-config-multinode.yaml
   OS::TripleO::Compute::Net::SoftwareConfig: ../common/net-config-multinode.yaml
+  # TODO deploy ceph with ceph-ansible: https://review.openstack.org/#/c/465066/
   OS::TripleO::Services::CephMon: ../../puppet/services/ceph-mon.yaml
   OS::TripleO::Services::CephOSD: ../../puppet/services/ceph-osd.yaml
   OS::TripleO::Services::CephClient: ../../puppet/services/ceph-client.yaml
-  OS::TripleO::Services::PankoApi: ../../puppet/services/panko-api.yaml
-  OS::TripleO::Services::Collectd: ../../puppet/services/metrics/collectd.yaml
-  OS::TripleO::Services::Tacker: ../../puppet/services/tacker.yaml
-  OS::TripleO::Services::Congress: ../../puppet/services/congress.yaml
+  OS::TripleO::Services::PankoApi: ../../docker/services/panko-api.yaml
+  OS::TripleO::Services::Collectd: ../../docker/services/collectd.yaml
+  OS::TripleO::Services::Tacker: ../../docker/services/tacker.yaml
+  OS::TripleO::Services::Congress: ../../docker/services/congress.yaml
+  # TODO fluentd is being containerized: https://review.openstack.org/#/c/467072/
   OS::TripleO::Services::FluentdClient: ../../puppet/services/logging/fluentd-client.yaml
-  OS::TripleO::Services::SensuClient: ../../puppet/services/monitoring/sensu-client.yaml
+  OS::TripleO::Services::SensuClient: ../../docker/services/sensu-client.yaml
   # NOTE: This is needed because of upgrades from Ocata to Pike. We
   # deploy the initial environment with Ocata templates, and
   # overcloud-resource-registry.yaml there doesn't have this Docker
   # mapping at all. After we stop CI'ing Ocata->Pike upgrade, we can
   # remove this.
   OS::TripleO::Services::Docker: OS::Heat::None
+  # Some infra instances don't pass the ping test but are otherwise working.
+  # Since the OVB jobs also test this functionality we can shut it off here.
+  OS::TripleO::AllNodes::Validation: ../common/all-nodes-validation-disabled.yaml
+  OS::TripleO::Services::NovaMigrationTarget: OS::Heat::None
 
 parameter_defaults:
   ControllerServices:
@@ -57,6 +63,7 @@ parameter_defaults:
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::NovaCompute
     - OS::TripleO::Services::NovaLibvirt
+    - OS::TripleO::Services::NovaMigrationTarget
     - OS::TripleO::Services::MongoDb
     - OS::TripleO::Services::Redis
     - OS::TripleO::Services::AodhApi
@@ -84,6 +91,7 @@ parameter_defaults:
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::FluentdClient
     - OS::TripleO::Services::SensuClient
+    - OS::TripleO::Services::Iscsid
 
   ControllerExtraConfig:
     nova::compute::libvirt::services::libvirt_virt_type: qemu

@@ -4,18 +4,24 @@ description: >
   OpenStack containerized Zaqar services
 
 parameters:
-  DockerNamespace:
-    description: namespace
-    default: 'tripleoupstream'
-    type: string
   DockerZaqarImage:
     description: image
-    default: 'centos-binary-zaqar:latest'
     type: string
+  DockerZaqarConfigImage:
+    description: The container image to use for the zaqar config_volume
+    type: string
+  ZaqarManagementStore:
+    type: string
+    description: The management store for Zaqar
+    default: mongodb
   EndpointMap:
     default: {}
     description: Mapping of service endpoint -> protocol. Typically set
                  via parameter_defaults in the resource registry.
+    type: json
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
     type: json
   ServiceNetMap:
     default: {}
@@ -34,6 +40,13 @@ parameters:
     default: {}
     description: Parameters specific to the role
     type: json
+  EnableInternalTLS:
+    type: boolean
+    default: false
+
+conditions:
+  zaqar_management_store_sqlalchemy: {equals : [{get_param: ZaqarManagementStore}, 'sqlalchemy']}
+  internal_tls_enabled: {get_param: EnableInternalTLS}
 
 resources:
 
@@ -44,10 +57,12 @@ resources:
     type: ../../puppet/services/zaqar.yaml
     properties:
       EndpointMap: {get_param: EndpointMap}
+      ServiceData: {get_param: ServiceData}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       RoleName: {get_param: RoleName}
       RoleParameters: {get_param: RoleParameters}
+      EnableInternalTLS: {get_param: EnableInternalTLS}
 
 outputs:
   role_data:
@@ -63,56 +78,96 @@ outputs:
         config_volume: zaqar
         puppet_tags: zaqar_config
         step_config: *step_config
-        config_image: &zaqar_image
-          list_join:
-            - '/'
-            - [ {get_param: DockerNamespace}, {get_param: DockerZaqarImage} ]
+        config_image: {get_param: DockerZaqarConfigImage}
       kolla_config:
         /var/lib/kolla/config_files/zaqar.json:
           command: /usr/sbin/httpd -DFOREGROUND
+          config_files:
+            - source: "/var/lib/kolla/config_files/src/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
         /var/lib/kolla/config_files/zaqar_websocket.json:
           command: /usr/bin/zaqar-server --config-file /etc/zaqar/zaqar.conf --config-file /etc/zaqar/1.conf
+          config_files:
+            - source: "/var/lib/kolla/config_files/src/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
           permissions:
             - path: /var/log/zaqar
               owner: zaqar:zaqar
               recurse: true
       docker_config:
-        step_4:
-          zaqar:
-            image: *zaqar_image
-            net: host
-            privileged: false
-            restart: always
-            # NOTE(mandre) kolla image changes the user to 'zaqar', we need it
-            # to be root to run httpd
-            user: root
-            volumes:
-              list_concat:
-                - {get_attr: [ContainersCommon, volumes]}
-                -
-                  - /var/lib/kolla/config_files/zaqar.json:/var/lib/kolla/config_files/config.json:ro
-                  - /var/lib/config-data/zaqar/etc/zaqar/:/etc/zaqar/:ro
-                  - /var/lib/config-data/zaqar/var/www/:/var/www/:ro
-                  - /var/lib/config-data/zaqar/etc/httpd/:/etc/httpd/:ro
-                  - /var/log/containers/zaqar:/var/log/zaqar
-            environment:
-              - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
-          zaqar_websocket:
-            image: *zaqar_image
-            net: host
-            privileged: false
-            restart: always
-            volumes:
-              list_concat:
-                - {get_attr: [ContainersCommon, volumes]}
-                -
-                  - /var/lib/kolla/config_files/zaqar_websocket.json:/var/lib/kolla/config_files/config.json:ro
-                  - /var/lib/config-data/zaqar/etc/zaqar/:/etc/zaqar/:ro
-                  - /var/lib/config-data/zaqar/var/www/:/var/www/:ro
-                  - /var/lib/config-data/zaqar/etc/httpd/:/etc/httpd/:ro
-                  - /var/log/containers/zaqar:/var/log/zaqar
-            environment:
-              - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
+        map_merge:
+          -
+            if:
+            - zaqar_management_store_sqlalchemy
+            -
+              step_2:
+                zaqar_init_log:
+                  image: &zaqar_image {get_param: DockerZaqarImage}
+                  user: root
+                  volumes:
+                    - /var/log/containers/zaqar:/var/log/zaqar
+                  command: ['/bin/bash', '-c', 'chown -R zaqar:zaqar /var/log/zaqar']
+              step_3:
+                zaqar_db_sync:
+                  image: *zaqar_image
+                  net: host
+                  privileged: false
+                  detach: false
+                  user: root
+                  volumes:
+                    list_concat:
+                      - {get_attr: [ContainersCommon, volumes]}
+                      -
+                        - /var/lib/config-data/zaqar/etc/zaqar/:/etc/zaqar/:ro
+                        - /var/log/containers/zaqar:/var/log/zaqar
+                  command: "/usr/bin/bootstrap_host_exec zaqar su zaqar -s /bin/bash -c 'zaqar-sql-db-manage upgrade head'"
+            - {}
+          - step_4:
+              zaqar:
+                image: *zaqar_image
+                net: host
+                privileged: false
+                restart: always
+                # NOTE(mandre) kolla image changes the user to 'zaqar', we need it
+                # to be root to run httpd
+                user: root
+                volumes:
+                  list_concat:
+                    - {get_attr: [ContainersCommon, volumes]}
+                    -
+                      - /var/lib/kolla/config_files/zaqar.json:/var/lib/kolla/config_files/config.json:ro
+                      - /var/lib/config-data/puppet-generated/zaqar/:/var/lib/kolla/config_files/src:ro
+                      - /var/log/containers/zaqar:/var/log/zaqar
+                      -
+                        if:
+                          - internal_tls_enabled
+                          - /etc/pki/tls/certs/httpd:/etc/pki/tls/certs/httpd:ro
+                          - ''
+                      -
+                        if:
+                          - internal_tls_enabled
+                          - /etc/pki/tls/private/httpd:/etc/pki/tls/private/httpd:ro
+                          - ''
+                environment:
+                  - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
+              zaqar_websocket:
+                image: *zaqar_image
+                net: host
+                privileged: false
+                restart: always
+                volumes:
+                  list_concat:
+                    - {get_attr: [ContainersCommon, volumes]}
+                    -
+                      - /var/lib/kolla/config_files/zaqar_websocket.json:/var/lib/kolla/config_files/config.json:ro
+                      - /var/lib/config-data/puppet-generated/zaqar/:/var/lib/kolla/config_files/src:ro
+                      - /var/log/containers/zaqar:/var/log/zaqar
+                environment:
+                  - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
       host_prep_tasks:
         - name: create persistent logs directory
           file:
@@ -122,3 +177,5 @@ outputs:
         - name: Stop and disable zaqar service
           tags: step2
           service: name=httpd state=stopped enabled=no
+      metadata_settings:
+        get_attr: [ZaqarBase, role_data, metadata_settings]

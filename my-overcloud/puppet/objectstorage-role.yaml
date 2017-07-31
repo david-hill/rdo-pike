@@ -69,8 +69,8 @@ parameters:
     default: 'localdomain'
     type: string
     description: >
-      The DNS domain used for the hosts. This should match the dhcp_domain
-      configured in the Undercloud neutron. Defaults to localdomain.
+      The DNS domain used for the hosts. This must match the
+      overcloud_domain_name configured on the undercloud.
   SwiftStorageServerMetadata:
     default: {}
     description: >
@@ -139,6 +139,29 @@ parameters:
       Map of server hostnames to blacklist from any triggered
       deployments. If the value is 1, the server will be blacklisted. This
       parameter is generated from the parent template.
+  RoleParameters:
+    type: json
+    description: Role Specific Parameters
+    default: {}
+  DeploymentSwiftDataMap:
+    type: json
+    description: |
+      Map of servers to Swift container and object for storing deployment data.
+      The keys are the Heat assigned hostnames, and the value is a map of the
+      container/object name in Swift. Example value:
+        overcloud-controller-0:
+          container: overcloud-controller
+          object: 0
+        overcloud-controller-1:
+          container: overcloud-controller
+          object: 1
+        overcloud-controller-2:
+          container: overcloud-controller
+          object: 2
+        overcloud-novacompute-0:
+          container: overcloud-compute
+          object: 0
+    default: {}
 
 conditions:
   server_not_blacklisted:
@@ -146,6 +169,12 @@ conditions:
       equals:
         - {get_param: [DeploymentServerBlacklistDict, {get_param: Hostname}]}
         - 1
+  deployment_swift_data_map_unset:
+    equals:
+      - get_param:
+          - DeploymentSwiftDataMap
+          - {get_param: Hostname}
+      - ""
 
 resources:
 
@@ -174,6 +203,12 @@ resources:
           - {get_param: SwiftStorageServerMetadata}
           - {get_param: ServiceMetadataSettings}
       scheduler_hints: {get_param: ObjectStorageSchedulerHints}
+      deployment_swift_data:
+        if:
+          - deployment_swift_data_map_unset
+          - {}
+          - {get_param: [DeploymentSwiftDataMap,
+                         {get_param: Hostname}]}
 
   # Combine the NodeAdminUserData and NodeUserData mime archives
   UserData:
@@ -372,6 +407,9 @@ resources:
     type: OS::TripleO::ObjectStorage::PreNetworkConfig
     properties:
       server: {get_resource: SwiftStorage}
+      RoleParameters: {get_param: RoleParameters}
+      ServiceNames: {get_param: ServiceNames}
+      deployment_actions: {get_attr: [DeploymentActions, value]}
 
   NetworkDeployment:
     type: OS::TripleO::SoftwareDeployment
@@ -451,6 +489,7 @@ resources:
             fqdn_tenant: {get_attr: [NetHostMap, value, tenant, fqdn]}
             fqdn_management: {get_attr: [NetHostMap, value, management, fqdn]}
             fqdn_ctlplane: {get_attr: [NetHostMap, value, ctlplane, fqdn]}
+            fqdn_external: {get_attr: [NetHostMap, value, external, fqdn]}
 
   SwiftStorageHieraDeploy:
     type: OS::Heat::StructuredDeployment
@@ -479,6 +518,9 @@ resources:
   NodeExtraConfig:
     depends_on: NodeTLSCAData
     type: OS::TripleO::NodeExtraConfig
+    # We have to use conditions here so that we don't break backwards
+    # compatibility with templates everywhere
+    condition: server_not_blacklisted
     properties:
         server: {get_resource: SwiftStorage}
 
@@ -500,11 +542,21 @@ resources:
           - ['CREATE', 'UPDATE']
           - []
 
+  DeploymentActions:
+    type: OS::Heat::Value
+    properties:
+      value:
+        if:
+          - server_not_blacklisted
+          - ['CREATE', 'UPDATE']
+          - []
+
   SshHostPubKey:
     type: OS::TripleO::Ssh::HostPubKey
     depends_on: SwiftStorageHieraDeploy
     properties:
         server: {get_resource: SwiftStorage}
+        deployment_actions: {get_attr: [DeploymentActions, value]}
 
 outputs:
   ip_address:
@@ -607,3 +659,45 @@ CTLPLANEIP,CTLPLANEHOST.DOMAIN,CTLPLANEHOST HOSTSSHPUBKEY"
   management_ip_address:
     description: IP address of the server in the management network
     value: {get_attr: [ManagementPort, ip_address]}
+  deployed_server_port_map:
+    description: |
+      Map of Heat created hostname of the server to ip address. This is the
+      hostname before it has been mapped with the HostnameMap parameter, and
+      the IP address from the ctlplane network. This map can be used to construct
+      the DeployedServerPortMap parameter when using split-stack.
+    value:
+      map_replace:
+        - hostname:
+            fixed_ips:
+              - ip_address: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+        - keys:
+            hostname:
+              list_join:
+                - '-'
+                - - {get_param: Hostname}
+                  - ctlplane
+  deployed_server_deployment_swift_data_map:
+    description:
+      Map of Heat created hostname of the server to the Swift container and object
+      used to created the temporary url for metadata polling with
+      os-collect-config.
+    value:
+      map_replace:
+        - hostname:
+            container:
+              str_split:
+                - '/'
+                - {get_attr: [SwiftStorage, os_collect_config, request, metadata_url]}
+                - 5
+            object:
+              str_split:
+                - '?'
+                - str_split:
+                    - '/'
+                    - {get_attr: [SwiftStorage, os_collect_config, request, metadata_url]}
+                    - 6
+                - 0
+        - keys: {hostname: {get_param: Hostname}}
+  os_collect_config:
+    description: The os-collect-config configuration associated with this server resource
+    value: {get_attr: [SwiftStorage, os_collect_config]}

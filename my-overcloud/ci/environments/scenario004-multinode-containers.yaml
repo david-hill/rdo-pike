@@ -6,6 +6,7 @@
 resource_registry:
   OS::TripleO::Controller::Net::SoftwareConfig: ../common/net-config-multinode.yaml
   OS::TripleO::Compute::Net::SoftwareConfig: ../common/net-config-multinode.yaml
+  # TODO deploy ceph with ceph-ansible: https://review.openstack.org/#/c/465066/
   OS::TripleO::Services::CephMds: ../../puppet/services/ceph-mds.yaml
   OS::TripleO::Services::CephMon: ../../puppet/services/ceph-mon.yaml
   OS::TripleO::Services::CephOSD: ../../puppet/services/ceph-osd.yaml
@@ -13,10 +14,11 @@ resource_registry:
   OS::TripleO::Services::SwiftProxy: OS::Heat::None
   OS::TripleO::Services::SwiftStorage: OS::Heat::None
   OS::TripleO::Services::SwiftRingBuilder: OS::Heat::None
-  OS::TripleO::Services::ManilaApi: ../../puppet/services/manila-api.yaml
-  OS::TripleO::Services::ManilaScheduler: ../../puppet/services/manila-scheduler.yaml
-  OS::TripleO::Services::ManilaShare: ../../puppet/services/manila-share.yaml
+  OS::TripleO::Services::ManilaApi: ../../docker/services/manila-api.yaml
+  OS::TripleO::Services::ManilaScheduler: ../../docker/services/manila-scheduler.yaml
+  OS::TripleO::Services::ManilaShare: ../../docker/services/manila-share.yaml
   OS::TripleO::Services::ManilaBackendCephFs: ../../puppet/services/manila-backend-cephfs.yaml
+  # TODO: containerize NeutronBgpVpnApi
   OS::TripleO::Services::NeutronBgpVpnApi: ../../puppet/services/neutron-bgpvpn-api.yaml
   # NOTE: This is needed because of upgrades from Ocata to Pike. We
   # deploy the initial environment with Ocata templates, and
@@ -24,6 +26,10 @@ resource_registry:
   # mapping at all. After we stop CI'ing Ocata->Pike upgrade, we can
   # remove this.
   OS::TripleO::Services::Docker: OS::Heat::None
+  # Some infra instances don't pass the ping test but are otherwise working.
+  # Since the OVB jobs also test this functionality we can shut it off here.
+  OS::TripleO::AllNodes::Validation: ../common/all-nodes-validation-disabled.yaml
+  OS::TripleO::Services::NovaMigrationTarget: OS::Heat::None
 
 
 parameter_defaults:
@@ -68,9 +74,11 @@ parameter_defaults:
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::NovaCompute
     - OS::TripleO::Services::NovaLibvirt
+    - OS::TripleO::Services::NovaMigrationTarget
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::Sshd
+    - OS::TripleO::Services::Iscsid
   ControllerExtraConfig:
     nova::compute::libvirt::services::libvirt_virt_type: qemu
     nova::compute::libvirt::libvirt_virt_type: qemu
@@ -90,3 +98,4 @@ parameter_defaults:
   SwiftCeilometerPipelineEnabled: false
   NeutronServicePlugins: 'router, networking_bgpvpn.neutron.services.plugin.BGPVPNPlugin'
   BgpvpnServiceProvider: 'BGPVPN:Dummy:networking_bgpvpn.neutron.services.service_drivers.driver_api.BGPVPNDriver:default'
+  NotificationDriver: 'noop'

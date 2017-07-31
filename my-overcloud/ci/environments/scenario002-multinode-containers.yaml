@@ -6,15 +6,20 @@
 resource_registry:
   OS::TripleO::Controller::Net::SoftwareConfig: ../common/net-config-multinode.yaml
   OS::TripleO::Compute::Net::SoftwareConfig: ../common/net-config-multinode.yaml
-  OS::TripleO::Services::BarbicanApi: ../../puppet/services/barbican-api.yaml
-  OS::TripleO::Services::Zaqar: ../../puppet/services/zaqar.yaml
-  OS::TripleO::Services::Ec2Api: ../../puppet/services/ec2-api.yaml
+  # TODO: Barbican is not yet containerized: https://review.openstack.org/#/c/474327
+  # OS::TripleO::Services::BarbicanApi: ../../docker/services/barbican-api.yaml
+  OS::TripleO::Services::Zaqar: ../../docker/services/zaqar.yaml
+  OS::TripleO::Services::Ec2Api: ../../docker/services/ec2-api.yaml
   # NOTE: This is needed because of upgrades from Ocata to Pike. We
   # deploy the initial environment with Ocata templates, and
   # overcloud-resource-registry.yaml there doesn't have this Docker
   # mapping at all. After we stop CI'ing Ocata->Pike upgrade, we can
   # remove this.
   OS::TripleO::Services::Docker: OS::Heat::None
+  # Some infra instances don't pass the ping test but are otherwise working.
+  # Since the OVB jobs also test this functionality we can shut it off here.
+  OS::TripleO::AllNodes::Validation: ../common/all-nodes-validation-disabled.yaml
+  OS::TripleO::Services::NovaMigrationTarget: OS::Heat::None
 
 parameter_defaults:
   ControllerServices:
@@ -49,6 +54,7 @@ parameter_defaults:
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::NovaCompute
     - OS::TripleO::Services::NovaLibvirt
+    - OS::TripleO::Services::NovaMigrationTarget
     - OS::TripleO::Services::CinderApi
     - OS::TripleO::Services::CinderBackup
     - OS::TripleO::Services::CinderScheduler
@@ -63,8 +69,10 @@ parameter_defaults:
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::Sshd
+    - OS::TripleO::Services::Iscsid
   ControllerExtraConfig:
     nova::compute::libvirt::services::libvirt_virt_type: qemu
     nova::compute::libvirt::libvirt_virt_type: qemu
   Debug: true
   SwiftCeilometerPipelineEnabled: false
+  NotificationDriver: 'noop'

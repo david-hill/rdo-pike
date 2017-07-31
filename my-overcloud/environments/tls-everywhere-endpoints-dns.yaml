@@ -20,39 +20,6 @@ parameter_defaults:
     CongressAdmin: {protocol: 'https', port: '1789', host: 'CLOUDNAME'}
     CongressInternal: {protocol: 'https', port: '1789', host: 'CLOUDNAME'}
     CongressPublic: {protocol: 'https', port: '13789', host: 'CLOUDNAME'}
-    ContrailAnalyticsApiAdmin: {protocol: 'http', port: '8081', host: 'IP_ADDRESS'}
-    ContrailAnalyticsApiInternal: {protocol: 'http', port: '8081', host: 'IP_ADDRESS'}
-    ContrailAnalyticsApiPublic: {protocol: 'http', port: '8081', host: 'IP_ADDRESS'}
-    ContrailAnalyticsCollectorHttpAdmin: {protocol: 'http', port: '8089',
-      host: 'IP_ADDRESS'}
-    ContrailAnalyticsCollectorHttpInternal: {protocol: 'http', port: '8089',
-      host: 'IP_ADDRESS'}
-    ContrailAnalyticsCollectorHttpPublic: {protocol: 'http', port: '8089',
-      host: 'IP_ADDRESS'}
-    ContrailAnalyticsCollectorSandeshAdmin: {protocol: 'http', port: '8086',
-      host: 'IP_ADDRESS'}
-    ContrailAnalyticsCollectorSandeshInternal: {protocol: 'http', port: '8086',
-      host: 'IP_ADDRESS'}
-    ContrailAnalyticsCollectorSandeshPublic: {protocol: 'http', port: '8086',
-      host: 'IP_ADDRESS'}
-    ContrailAnalyticsHttpAdmin: {protocol: 'http', port: '8090', host: 'IP_ADDRESS'}
-    ContrailAnalyticsHttpInternal: {protocol: 'http', port: '8090', host: 'IP_ADDRESS'}
-    ContrailAnalyticsHttpPublic: {protocol: 'http', port: '8090', host: 'IP_ADDRESS'}
-    ContrailAnalyticsRedisAdmin: {protocol: 'http', port: '6379', host: 'IP_ADDRESS'}
-    ContrailAnalyticsRedisInternal: {protocol: 'http', port: '6379', host: 'IP_ADDRESS'}
-    ContrailAnalyticsRedisPublic: {protocol: 'http', port: '6379', host: 'IP_ADDRESS'}
-    ContrailConfigAdmin: {protocol: 'http', port: '8082', host: 'IP_ADDRESS'}
-    ContrailConfigInternal: {protocol: 'http', port: '8082', host: 'IP_ADDRESS'}
-    ContrailConfigPublic: {protocol: 'http', port: '8082', host: 'IP_ADDRESS'}
-    ContrailDiscoveryAdmin: {protocol: 'http', port: '5998', host: 'IP_ADDRESS'}
-    ContrailDiscoveryInternal: {protocol: 'http', port: '5998', host: 'IP_ADDRESS'}
-    ContrailDiscoveryPublic: {protocol: 'http', port: '5998', host: 'IP_ADDRESS'}
-    ContrailWebuiHttpAdmin: {protocol: 'http', port: '8080', host: 'IP_ADDRESS'}
-    ContrailWebuiHttpInternal: {protocol: 'http', port: '8080', host: 'IP_ADDRESS'}
-    ContrailWebuiHttpPublic: {protocol: 'http', port: '8080', host: 'IP_ADDRESS'}
-    ContrailWebuiHttpsAdmin: {protocol: 'http', port: '8143', host: 'IP_ADDRESS'}
-    ContrailWebuiHttpsInternal: {protocol: 'http', port: '8143', host: 'IP_ADDRESS'}
-    ContrailWebuiHttpsPublic: {protocol: 'http', port: '8143', host: 'IP_ADDRESS'}
     Ec2ApiAdmin: {protocol: 'https', port: '8788', host: 'CLOUDNAME'}
     Ec2ApiInternal: {protocol: 'https', port: '8788', host: 'CLOUDNAME'}
     Ec2ApiPublic: {protocol: 'https', port: '13788', host: 'CLOUDNAME'}
@@ -72,8 +39,8 @@ parameter_defaults:
     IronicAdmin: {protocol: 'https', port: '6385', host: 'CLOUDNAME'}
     IronicInternal: {protocol: 'https', port: '6385', host: 'CLOUDNAME'}
     IronicPublic: {protocol: 'https', port: '13385', host: 'CLOUDNAME'}
-    IronicInspectorAdmin: {protocol: 'http', port: '5050', host: 'CLOUDNAME'}
-    IronicInspectorInternal: {protocol: 'http', port: '5050', host: 'CLOUDNAME'}
+    IronicInspectorAdmin: {protocol: 'https', port: '5050', host: 'CLOUDNAME'}
+    IronicInspectorInternal: {protocol: 'https', port: '5050', host: 'CLOUDNAME'}
     IronicInspectorPublic: {protocol: 'https', port: '13050', host: 'CLOUDNAME'}
     KeystoneAdmin: {protocol: 'https', port: '35357', host: 'CLOUDNAME'}
     KeystoneInternal: {protocol: 'https', port: '5000', host: 'CLOUDNAME'}
@@ -100,9 +67,9 @@ parameter_defaults:
     OctaviaAdmin: {protocol: 'https', port: '9876', host: 'IP_ADDRESS'}
     OctaviaInternal: {protocol: 'https', port: '9876', host: 'IP_ADDRESS'}
     OctaviaPublic: {protocol: 'https', port: '13876', host: 'CLOUDNAME'}
-    PankoAdmin: {protocol: 'https', port: '8779', host: 'CLOUDNAME'}
-    PankoInternal: {protocol: 'https', port: '8779', host: 'CLOUDNAME'}
-    PankoPublic: {protocol: 'https', port: '13779', host: 'CLOUDNAME'}
+    PankoAdmin: {protocol: 'https', port: '8977', host: 'CLOUDNAME'}
+    PankoInternal: {protocol: 'https', port: '8977', host: 'CLOUDNAME'}
+    PankoPublic: {protocol: 'https', port: '13977', host: 'CLOUDNAME'}
     SaharaAdmin: {protocol: 'https', port: '8386', host: 'CLOUDNAME'}
     SaharaInternal: {protocol: 'https', port: '8386', host: 'CLOUDNAME'}
     SaharaPublic: {protocol: 'https', port: '13386', host: 'CLOUDNAME'}

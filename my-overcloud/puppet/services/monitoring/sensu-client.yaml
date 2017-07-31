@@ -3,6 +3,10 @@ heat_template_version: pike
 description: Sensu client configured with Puppet
 
 parameters:
+  ServiceData:
+    default: {}
+    description: Dictionary packing service data
+    type: json
   ServiceNetMap:
     default: {}
     description: Mapping of service_name -> network name. Typically set
@@ -27,8 +31,9 @@ parameters:
       via parameter_defaults in the resource registry.
     type: json
   AdminPassword:
-    description: Keystone admin user password
+    description: The password for the keystone admin account, used for monitoring, querying neutron etc.
     type: string
+    hidden: true
   KeystoneRegion:
     default: 'regionOne'
     description: Keystone region for endpoint
@@ -43,6 +48,7 @@ resources:
   SensuBase:
     type: ./sensu-base.yaml
     properties:
+      ServiceData: {get_param: ServiceData}
       ServiceNetMap: {get_param: ServiceNetMap}
       DefaultPasswords: {get_param: DefaultPasswords}
       EndpointMap: {get_param: EndpointMap}
