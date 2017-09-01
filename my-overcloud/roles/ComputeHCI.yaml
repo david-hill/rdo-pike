@@ -35,6 +35,7 @@
     - OS::TripleO::Services::NovaLibvirt
     - OS::TripleO::Services::NovaMigrationTarget
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::OpenDaylightOvs
     - OS::TripleO::Services::Securetty
     - OS::TripleO::Services::SensuClient
@@ -45,3 +46,4 @@
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::Tuned
     - OS::TripleO::Services::Vpp
+    - OS::TripleO::Services::OVNController

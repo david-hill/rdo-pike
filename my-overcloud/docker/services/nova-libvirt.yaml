@@ -12,10 +12,6 @@ parameters:
   DockerNovaLibvirtConfigImage:
     description: The container image to use for the nova_libvirt config_volume
     type: string
-  EnablePackageInstall:
-    default: 'false'
-    description: Set to true to enable package installation at deploy time
-    type: boolean
   ServiceData:
     default: {}
     description: Dictionary packing service data
@@ -56,7 +52,21 @@ parameters:
     description: Port that dockerized nova migration target sshd service
                  binds to.
     type: number
-
+  NovaEnableRbdBackend:
+    default: false
+    description: Whether to enable or not the Rbd backend for Nova
+    type: boolean
+  CinderEnableRbdBackend:
+    default: false
+    description: Whether to enable or not the Rbd backend for Cinder
+    type: boolean
+  CephClientKey:
+    description: The Ceph client key. Can be created with ceph-authtool --gen-print-key.
+    type: string
+    hidden: true
+  CephClusterFSID:
+    type: string
+    description: The Ceph cluster FSID. Must be a UUID.
 
 conditions:
 
@@ -69,10 +79,22 @@ conditions:
       - {get_param: UseTLSTransportForLiveMigration}
       - true
 
+  need_libvirt_secret:
+    or:
+    - equals:
+      - {get_param: NovaEnableRbdBackend}
+      - true
+    - equals:
+      - {get_param: CinderEnableRbdBackend}
+      - true
+
 resources:
 
   ContainersCommon:
     type: ./containers-common.yaml
+
+  MySQLClient:
+    type: ../../puppet/services/database/mysql-client.yaml
 
   NovaLibvirtBase:
     type: ../../puppet/services/nova-libvirt.yaml
@@ -91,12 +113,18 @@ outputs:
     value:
       service_name: {get_attr: [NovaLibvirtBase, role_data, service_name]}
       config_settings:
-        get_attr: [NovaLibvirtBase, role_data, config_settings]
+        map_merge:
+          - get_attr: [NovaLibvirtBase, role_data, config_settings]
+          - tripleo::profile::base::certmonger_user::libvirt_postsave_cmd: "true" # TODO: restart the libvirt container here
+
       step_config: &step_config
-        get_attr: [NovaLibvirtBase, role_data, step_config]
+        list_join:
+          - "\n"
+          - - {get_attr: [NovaLibvirtBase, role_data, step_config]}
+            - {get_attr: [MySQLClient, role_data, step_config]}
       puppet_config:
         config_volume: nova_libvirt
-        puppet_tags: libvirtd_config,nova_config,file,exec
+        puppet_tags: libvirtd_config,nova_config,file
         step_config: *step_config
         config_image: {get_param: DockerNovaLibvirtConfigImage}
       kolla_config:
@@ -115,13 +143,45 @@ outputs:
               dest: "/etc/ceph/"
               merge: true
               preserve_properties: true
+        /var/lib/kolla/config_files/nova_virtlogd.json:
+          command: /usr/sbin/virtlogd --config /etc/libvirt/virtlogd.conf
+          config_files:
+            - source: "/var/lib/kolla/config_files/src/*"
+              dest: "/"
+              merge: true
+              preserve_properties: true
           permissions:
             - path: /var/log/nova
               owner: nova:nova
               recurse: true
       docker_config:
         step_3:
+          nova_virtlogd:
+            start_order: 0
+            image: {get_param: DockerNovaLibvirtImage}
+            net: host
+            pid: host
+            privileged: true
+            restart: always
+            volumes:
+              list_concat:
+                - {get_attr: [ContainersCommon, volumes]}
+                -
+                  - /var/lib/kolla/config_files/nova_virtlogd.json:/var/lib/kolla/config_files/config.json:ro
+                  - /var/lib/config-data/puppet-generated/nova_libvirt/:/var/lib/kolla/config_files/src:ro
+                  - /lib/modules:/lib/modules:ro
+                  - /dev:/dev
+                  - /run:/run
+                  - /sys/fs/cgroup:/sys/fs/cgroup
+                  - /var/lib/nova:/var/lib/nova
+                  - /var/run/libvirt:/var/run/libvirt
+                  - /var/lib/libvirt:/var/lib/libvirt
+                  - /etc/libvirt/qemu:/etc/libvirt/qemu:ro
+                  - /var/log/libvirt/qemu:/var/log/libvirt/qemu
+            environment:
+              - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
           nova_libvirt:
+            start_order: 1
             image: {get_param: DockerNovaLibvirtImage}
             net: host
             pid: host
@@ -139,21 +199,55 @@ outputs:
                   - /run:/run
                   - /sys/fs/cgroup:/sys/fs/cgroup
                   - /var/lib/nova:/var/lib/nova
-                  - /etc/libvirt/secrets:/etc/libvirt/secrets
-                  # Needed to use host's virtlogd
+                  - /etc/libvirt:/etc/libvirt
                   - /var/run/libvirt:/var/run/libvirt
                   - /var/lib/libvirt:/var/lib/libvirt
-                  - /etc/libvirt/qemu:/etc/libvirt/qemu
                   - /var/log/libvirt/qemu:/var/log/libvirt/qemu:ro
                   - /var/log/containers/nova:/var/log/nova
+                -
+                  if:
+                    - use_tls_for_live_migration
+                    -
+                      - /etc/ipa/ca.crt:/etc/pki/CA/cacert.pem:ro
+                      - /etc/pki/libvirt/servercert.pem:/etc/pki/libvirt/servercert.pem:ro
+                      - /etc/pki/libvirt/private/serverkey.pem:/etc/pki/libvirt/private/serverkey.pem:ro
+                      - /etc/pki/libvirt/clientcert.pem:/etc/pki/libvirt/clientcert.pem:ro
+                      - /etc/pki/libvirt/private/clientkey.pem:/etc/pki/libvirt/private/clientkey.pem:ro
+                    - null
             environment:
               - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
+        step_4:
+          if:
+            - need_libvirt_secret
+            - nova_libvirt_init_secret:
+                detach: false
+                image: {get_param: DockerNovaLibvirtImage}
+                privileged: false
+                user: root
+                volumes:
+                  list_concat:
+                    - {get_attr: [ContainersCommon, volumes]}
+                    -
+                      - /var/lib/config-data/puppet-generated/nova_libvirt/etc/nova:/etc/nova:ro
+                      - /etc/libvirt:/etc/libvirt
+                      - /var/run/libvirt:/var/run/libvirt
+                      - /var/lib/libvirt:/var/lib/libvirt
+                command:
+                  - /bin/bash
+                  - -c
+                  - str_replace:
+                      template: /usr/bin/virsh secret-define --file /etc/nova/secret.xml && /usr/bin/virsh secret-set-value --secret 'SECRET_UUID' --base64 'SECRET_KEY'
+                      params:
+                        SECRET_UUID: {get_param: CephClusterFSID}
+                        SECRET_KEY: {get_param: CephClientKey}
+            - {}
       host_prep_tasks:
         - name: create libvirt persistent data directories
           file:
             path: "{{ item }}"
             state: directory
           with_items:
+            - /etc/libvirt
             - /etc/libvirt/secrets
             - /etc/libvirt/qemu
             - /var/lib/libvirt
@@ -162,22 +256,21 @@ outputs:
           file:
             path: /etc/ceph
             state: directory
-        - name: set enable_package_install fact
-          set_fact:
-            enable_package_install: {get_param: EnablePackageInstall}
-        # We use virtlogd on host, so when using Deployed Server
-        # feature, we need to ensure libvirt is installed.
-        - name: install libvirt-daemon
-          package:
-            name: libvirt-daemon
-            state: present
-          when: enable_package_install
-        - name: start virtlogd socket
+        - name: check if libvirt is installed
+          command: /usr/bin/rpm -q libvirt-daemon
+          failed_when: false
+          register: libvirt_installed
+        - name: make sure libvirt services are disabled
           service:
-            name: virtlogd.socket
-            state: started
-            enabled: yes
-          when: enable_package_install
+            name: "{{ item }}"
+            state: stopped
+            enabled: no
+          with_items:
+            - libvirtd.service
+            - virtlogd.socket
+          when: libvirt_installed.rc == 0
+      metadata_settings:
+        get_attr: [NovaLibvirtBase, role_data, metadata_settings]
       upgrade_tasks:
         - name: Stop and disable libvirtd service
           tags: step2

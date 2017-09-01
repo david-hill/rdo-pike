@@ -27,12 +27,14 @@
     - OS::TripleO::Services::CeilometerAgentCentral
     - OS::TripleO::Services::CeilometerAgentNotification
     - OS::TripleO::Services::CeilometerApi
+    - OS::TripleO::Services::CeilometerCollector
     - OS::TripleO::Services::CeilometerExpirer
     - OS::TripleO::Services::CephExternal
     - OS::TripleO::Services::CephMds
     - OS::TripleO::Services::CephMon
     - OS::TripleO::Services::CephRbdMirror
     - OS::TripleO::Services::CephRgw
+    - OS::TripleO::Services::CertmongerUser
     - OS::TripleO::Services::CinderApi
     - OS::TripleO::Services::CinderBackup
     - OS::TripleO::Services::CinderHPELeftHandISCSI
@@ -65,6 +67,8 @@
     - OS::TripleO::Services::ManilaBackendCephFs
     - OS::TripleO::Services::ManilaBackendGeneric
     - OS::TripleO::Services::ManilaBackendNetapp
+    - OS::TripleO::Services::ManilaBackendUnity
+    - OS::TripleO::Services::ManilaBackendVNX
     - OS::TripleO::Services::ManilaScheduler
     - OS::TripleO::Services::ManilaShare
     - OS::TripleO::Services::Memcached
@@ -79,6 +83,7 @@
     - OS::TripleO::Services::NovaScheduler
     - OS::TripleO::Services::NovaVncProxy
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::OctaviaApi
     - OS::TripleO::Services::OctaviaHealthManager
     - OS::TripleO::Services::OctaviaHousekeeping
@@ -86,6 +91,7 @@
     - OS::TripleO::Services::OpenDaylightApi
     - OS::TripleO::Services::OpenDaylightOvs
     - OS::TripleO::Services::OVNDBs
+    - OS::TripleO::Services::OVNController
     - OS::TripleO::Services::Pacemaker
     - OS::TripleO::Services::PankoApi
     - OS::TripleO::Services::Redis

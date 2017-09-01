@@ -49,6 +49,9 @@ resources:
   ContainersCommon:
     type: ./containers-common.yaml
 
+  MySQLClient:
+    type: ../../puppet/services/database/mysql-client.yaml
+
   AodhApiPuppetBase:
       type: ../../puppet/services/aodh-api.yaml
       properties:
@@ -68,7 +71,10 @@ outputs:
           - get_attr: [AodhApiPuppetBase, role_data, config_settings]
           - apache::default_vhost: false
       step_config: &step_config
-        get_attr: [AodhApiPuppetBase, role_data, step_config]
+        list_join:
+          - "\n"
+          - - {get_attr: [AodhApiPuppetBase, role_data, step_config]}
+            - {get_attr: [MySQLClient, role_data, step_config]}
       service_config_settings: {get_attr: [AodhApiPuppetBase, role_data, service_config_settings]}
       # BEGIN DOCKER SETTINGS
       puppet_config:
@@ -108,6 +114,7 @@ outputs:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
+                  - /var/lib/config-data/aodh/etc/my.cnf.d/tripleo.cnf:/etc/my.cnf.d/tripleo.cnf:ro
                   - /var/lib/config-data/aodh/etc/aodh/:/etc/aodh/:ro
                   - /var/log/containers/aodh:/var/log/aodh
             command: "/usr/bin/bootstrap_host_exec aodh_api su aodh -s /bin/bash -c /usr/bin/aodh-dbsync"

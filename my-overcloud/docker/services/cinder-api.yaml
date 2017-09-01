@@ -49,6 +49,9 @@ resources:
   ContainersCommon:
     type: ./containers-common.yaml
 
+  MySQLClient:
+    type: ../../puppet/services/database/mysql-client.yaml
+
   CinderBase:
     type: ../../puppet/services/cinder-api.yaml
     properties:
@@ -66,7 +69,10 @@ outputs:
       service_name: {get_attr: [CinderBase, role_data, service_name]}
       config_settings: {get_attr: [CinderBase, role_data, config_settings]}
       step_config: &step_config
-        get_attr: [CinderBase, role_data, step_config]
+        list_join:
+          - "\n"
+          - - {get_attr: [CinderBase, role_data, step_config]}
+            - {get_attr: [MySQLClient, role_data, step_config]}
       service_config_settings: {get_attr: [CinderBase, role_data, service_config_settings]}
       # BEGIN DOCKER SETTINGS
       puppet_config:
@@ -154,6 +160,7 @@ outputs:
           cinder_api_cron:
             image: *cinder_api_image
             net: host
+            user: root
             privileged: false
             restart: always
             volumes:
@@ -166,6 +173,8 @@ outputs:
             environment:
               - KOLLA_CONFIG_STRATEGY=COPY_ALWAYS
 
+      metadata_settings:
+        get_attr: [CinderBase, role_data, metadata_settings]
       host_prep_tasks:
         - name: create persistent logs directory
           file:
@@ -175,3 +184,7 @@ outputs:
         - name: Stop and disable cinder_api service
           tags: step2
           service: name=httpd state=stopped enabled=no
+        - name: remove old cinder cron jobs
+          file:
+            path: /var/spool/cron/cinder
+            state: absent

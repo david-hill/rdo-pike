@@ -66,6 +66,7 @@
     - OS::TripleO::Services::NovaVncProxy
     - OS::TripleO::Services::Ec2Api
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::SwiftProxy
     - OS::TripleO::Services::SwiftStorage
     - OS::TripleO::Services::SwiftRingBuilder
@@ -85,7 +86,9 @@
     - OS::TripleO::Services::ManilaScheduler
     - OS::TripleO::Services::ManilaBackendGeneric
     - OS::TripleO::Services::ManilaBackendNetapp
+    - OS::TripleO::Services::ManilaBackendUnity
     - OS::TripleO::Services::ManilaBackendCephFs
+    - OS::TripleO::Services::ManilaBackendVNX
     - OS::TripleO::Services::ManilaShare
     - OS::TripleO::Services::AodhApi
     - OS::TripleO::Services::AodhEvaluator
@@ -122,6 +125,7 @@
     - OS::TripleO::Services::CephExternal
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::Sshd
     - OS::TripleO::Services::NovaCompute
@@ -149,6 +153,7 @@
     - OS::TripleO::Services::BlockStorageCinderVolume
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::Sshd
@@ -165,6 +170,7 @@
     - OS::TripleO::Services::CertmongerUser
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::SwiftStorage
     - OS::TripleO::Services::SwiftRingBuilder
     - OS::TripleO::Services::Snmp
@@ -184,6 +190,7 @@
     - OS::TripleO::Services::CephOSD
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::Sshd
     - OS::TripleO::Services::Timezone
@@ -203,6 +210,7 @@
     - OS::TripleO::Services::ContrailWebUI
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::TripleoPackages
@@ -217,6 +225,7 @@
     - OS::TripleO::Services::ContrailAnalytics
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::TripleoPackages
@@ -230,6 +239,7 @@
     - OS::TripleO::Services::ContrailAnalyticsDatabase
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::TripleoPackages
@@ -243,6 +253,7 @@
     - OS::TripleO::Services::ContrailTsn
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::TripleoPackages
@@ -256,6 +267,7 @@
     - OS::TripleO::Services::ContrailTsn
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::Timezone
     - OS::TripleO::Services::Snmp
     - OS::TripleO::Services::TripleoPackages

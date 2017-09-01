@@ -16,6 +16,12 @@
     - StorageMgmt
     - Tenant
   HostnameFormatDefault: '%stackname%-controller-%index%'
+  # Deprecated & backward-compatible values (FIXME: Make parameters consistent)
+  # Set uses_deprecated_params to True if any deprecated params are used.
+  uses_deprecated_params: True
+  deprecated_param_extraconfig: 'controllerExtraConfig'
+  deprecated_param_flavor: 'OvercloudControlFlavor'
+  deprecated_param_image: 'controllerImage'
   ServicesDefault:
     - OS::TripleO::Services::AodhApi
     - OS::TripleO::Services::AodhEvaluator
@@ -28,6 +34,8 @@
     - OS::TripleO::Services::CeilometerAgentNotification
     # FIXME: This service was disabled in Pike and this entry should be removed
     # in Queens.
+    - OS::TripleO::Services::CeilometerApi
+    - OS::TripleO::Services::CeilometerCollector
     - OS::TripleO::Services::CeilometerExpirer
     - OS::TripleO::Services::CephExternal
     - OS::TripleO::Services::CephMds
@@ -38,6 +46,7 @@
     - OS::TripleO::Services::CinderApi
     - OS::TripleO::Services::CinderBackendDellPs
     - OS::TripleO::Services::CinderBackendDellSc
+    - OS::TripleO::Services::CinderBackendDellEMCUnity
     - OS::TripleO::Services::CinderBackendNetApp
     - OS::TripleO::Services::CinderBackendScaleIO
     - OS::TripleO::Services::CinderBackendVRTSHyperScale
@@ -73,6 +82,8 @@
     - OS::TripleO::Services::ManilaBackendCephFs
     - OS::TripleO::Services::ManilaBackendGeneric
     - OS::TripleO::Services::ManilaBackendNetapp
+    - OS::TripleO::Services::ManilaBackendUnity
+    - OS::TripleO::Services::ManilaBackendVNX
     - OS::TripleO::Services::ManilaScheduler
     - OS::TripleO::Services::ManilaShare
     - OS::TripleO::Services::Memcached
@@ -102,6 +113,7 @@
     - OS::TripleO::Services::NovaScheduler
     - OS::TripleO::Services::NovaVncProxy
     - OS::TripleO::Services::Ntp
+    - OS::TripleO::Services::ContainersLogrotateCrond
     - OS::TripleO::Services::OctaviaApi
     - OS::TripleO::Services::OctaviaHealthManager
     - OS::TripleO::Services::OctaviaHousekeeping
@@ -109,6 +121,7 @@
     - OS::TripleO::Services::OpenDaylightApi
     - OS::TripleO::Services::OpenDaylightOvs
     - OS::TripleO::Services::OVNDBs
+    - OS::TripleO::Services::OVNController
     - OS::TripleO::Services::Pacemaker
     - OS::TripleO::Services::PankoApi
     - OS::TripleO::Services::RabbitMQ

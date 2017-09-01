@@ -50,83 +50,57 @@ PARAMETER_DEFINITION_EXCLUSIONS = {'ManagementNetCidr': ['default'],
                                    'ExternalAllocationPools': ['default'],
                                    'StorageNetCidr': ['default'],
                                    'StorageAllocationPools': ['default'],
-                                   'StorageMgmtNetCidr': ['default',
-                                                          # FIXME
-                                                          'description'],
+                                   'StorageMgmtNetCidr': ['default'],
                                    'StorageMgmtAllocationPools': ['default'],
                                    'TenantNetCidr': ['default'],
                                    'TenantAllocationPools': ['default'],
                                    'InternalApiNetCidr': ['default'],
+                                   'InternalApiAllocationPools': ['default'],
                                    'UpdateIdentifier': ['description'],
+                                   'key_name': ['default'],
+                                   # There's one template that defines this
+                                   # differently, and I'm not sure if we can
+                                   # safely change it.
+                                   'EC2MetadataIp': ['default'],
+                                   # Same as EC2MetadataIp
+                                   'ControlPlaneDefaultRoute': ['default'],
                                    # TODO(bnemec): Address these existing
                                    # inconsistencies.
-                                   'NeutronMetadataProxySharedSecret': [
-                                       'description', 'hidden'],
                                    'ServiceNetMap': ['description', 'default'],
-                                   'EC2MetadataIp': ['default'],
                                    'network': ['default'],
                                    'ControlPlaneIP': ['default',
                                                       'description'],
                                    'ControlPlaneIp': ['default',
                                                       'description'],
                                    'NeutronBigswitchLLDPEnabled': ['default'],
-                                   'NeutronEnableL2Pop': ['description'],
                                    'NeutronWorkers': ['description'],
-                                   'TenantIpSubnet': ['description'],
-                                   'ExternalNetName': ['description'],
-                                   'ControlPlaneDefaultRoute': ['default'],
-                                   'StorageMgmtNetName': ['description'],
                                    'ServerMetadata': ['description'],
-                                   'InternalApiIpUri': ['description'],
-                                   'UpgradeLevelNovaCompute': ['default'],
-                                   'StorageMgmtIpUri': ['description'],
                                    'server': ['description'],
                                    'servers': ['description'],
-                                   'FixedIPs': ['description'],
-                                   'ExternalIpSubnet': ['description'],
-                                   'NeutronBridgeMappings': ['description'],
                                    'ExtraConfig': ['description'],
-                                   'InternalApiIpSubnet': ['description'],
                                    'DefaultPasswords': ['description',
                                                         'default'],
                                    'BondInterfaceOvsOptions': ['description',
                                                                'default',
                                                                'constraints'],
                                    'KeyName': ['constraints'],
-                                   'TenantNetName': ['description'],
-                                   'StorageIpSubnet': ['description'],
                                    'OVNSouthboundServerPort': ['description'],
                                    'ExternalInterfaceDefaultRoute':
                                        ['description', 'default'],
-                                   'ExternalIpUri': ['description'],
                                    'IPPool': ['description'],
-                                   'ControlPlaneNetwork': ['description'],
                                    'SSLCertificate': ['description',
                                                       'default',
                                                       'hidden'],
                                    'HostCpusList': ['default', 'constraints'],
-                                   'InternalApiAllocationPools': ['default'],
                                    'NodeIndex': ['description'],
                                    'name': ['description', 'default'],
-                                   'StorageNetName': ['description'],
-                                   'ManagementNetName': ['description'],
-                                   'NeutronPublicInterface': ['description'],
-                                   'RoleParameters': ['description'],
-                                   'ManagementInterfaceDefaultRoute':
-                                       ['default'],
                                    'image': ['description', 'default'],
                                    'NeutronBigswitchAgentEnabled': ['default'],
                                    'EndpointMap': ['description', 'default'],
                                    'DockerManilaConfigImage': ['description',
                                                                'default'],
-                                   'NetworkName': ['default', 'description'],
-                                   'StorageIpUri': ['description'],
-                                   'InternalApiNetName': ['description'],
-                                   'NeutronTunnelTypes': ['description'],
                                    'replacement_policy': ['default'],
-                                   'StorageMgmtIpSubnet': ['description'],
                                    'CloudDomain': ['description', 'default'],
-                                   'key_name': ['default', 'description'],
                                    'EnableLoadBalancer': ['description'],
                                    'ControllerExtraConfig': ['description'],
                                    'NovaComputeExtraConfig': ['description'],
@@ -207,6 +181,22 @@ def validate_hci_computehci_role(hci_role_filename, hci_role_tpl):
     return 0
 
 
+def search(item, check_item, check_key):
+    if check_item(item):
+        return True
+    elif isinstance(item, list):
+        for i in item:
+            if search(i, check_item, check_key):
+                return True
+    elif isinstance(item, dict):
+        for k in item.keys():
+            if check_key(k, item[k]):
+                return True
+            elif search(item[k], check_item, check_key):
+                return True
+    return False
+
+
 def validate_mysql_connection(settings):
     no_op = lambda *args: False
     error_status = [0]
@@ -228,23 +218,67 @@ def validate_mysql_connection(settings):
                 error_status[0] = 1
         return False
 
-    def search(item, check_item, check_key):
-        if check_item(item):
-            return True
-        elif isinstance(item, list):
-            for i in item:
-                if search(i, check_item, check_key):
-                    return True
-        elif isinstance(item, dict):
-            for k in item.keys():
-                if check_key(k, item[k]):
-                    return True
-                elif search(item[k], check_item, check_key):
-                    return True
-        return False
-
     search(settings, no_op, validate_mysql_uri)
     return error_status[0]
+
+
+def validate_docker_service_mysql_usage(filename, tpl):
+    no_op = lambda *args: False
+    included_res = []
+
+    def match_included_res(item):
+        is_config_setting = isinstance(item, list) and len(item) > 1 and \
+            item[1:] == ['role_data', 'config_settings']
+        if is_config_setting:
+            included_res.append(item[0])
+        return is_config_setting
+
+    def match_use_mysql_protocol(items):
+        return items == ['EndpointMap', 'MysqlInternal', 'protocol']
+
+    all_content = []
+
+    def read_all(incfile, inctpl):
+        # search for included content
+        content = inctpl['outputs']['role_data']['value'].get('config_settings',{})
+        all_content.append(content)
+        included_res[:] = []
+        if search(content, match_included_res, no_op):
+            files = [inctpl['resources'][x]['type'] for x in included_res]
+            # parse included content
+            for r, f in zip(included_res, files):
+                # disregard class names, only consider file names
+                if 'OS::' in f:
+                    continue
+                newfile = os.path.normpath(os.path.dirname(incfile)+'/'+f)
+                newtmp = yaml.load(open(newfile).read())
+                read_all(newfile, newtmp)
+
+    read_all(filename, tpl)
+    if search(all_content, match_use_mysql_protocol, no_op):
+        # ensure this service includes the mysqlclient service
+        resources = tpl['resources']
+        mysqlclient = [x for x in resources
+                       if resources[x]['type'].endswith('mysql-client.yaml')]
+        if len(mysqlclient) == 0:
+            print("ERROR: containerized service %s uses mysql but "
+                  "resource mysql-client.yaml is not used"
+                  % filename)
+            return 1
+
+        # and that mysql::client puppet module is included in puppet-config
+        match_mysqlclient = \
+            lambda x: x == [mysqlclient[0], 'role_data', 'step_config']
+        role_data = tpl['outputs']['role_data']
+        puppet_config = role_data['value']['puppet_config']['step_config']
+        if not search(puppet_config, match_mysqlclient, no_op):
+            print("ERROR: containerized service %s uses mysql but "
+                  "puppet_config section does not include "
+                  "::tripleo::profile::base::database::mysql::client"
+                  % filename)
+            return 1
+
+    return 0
 
 
 def validate_docker_service(filename, tpl):
@@ -275,6 +309,10 @@ def validate_docker_service(filename, tpl):
                     return 1
 
         if 'puppet_config' in role_data:
+            if validate_docker_service_mysql_usage(filename, tpl):
+                print('ERROR: could not validate use of mysql service for %s.'
+                      % filename)
+                return 1
             puppet_config = role_data['puppet_config']
             for key in puppet_config:
                 if key in REQUIRED_DOCKER_PUPPET_CONFIG_SECTIONS:

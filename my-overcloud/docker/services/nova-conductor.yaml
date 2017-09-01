@@ -36,12 +36,18 @@ parameters:
     default: {}
     description: Parameters specific to the role
     type: json
-
+  UpgradeLevelNovaCompute:
+    type: string
+    description: Nova Compute upgrade level
+    default: ''
 
 resources:
 
   ContainersCommon:
     type: ./containers-common.yaml
+
+  MySQLClient:
+    type: ../../puppet/services/database/mysql-client.yaml
 
   NovaConductorBase:
     type: ../../puppet/services/nova-conductor.yaml
@@ -60,7 +66,10 @@ outputs:
       service_name: {get_attr: [NovaConductorBase, role_data, service_name]}
       config_settings: {get_attr: [NovaConductorBase, role_data, config_settings]}
       step_config: &step_config
-        get_attr: [NovaConductorBase, role_data, step_config]
+        list_join:
+          - "\n"
+          - - {get_attr: [NovaConductorBase, role_data, step_config]}
+            - {get_attr: [MySQLClient, role_data, step_config]}
       service_config_settings: {get_attr: [NovaConductorBase, role_data, service_config_settings]}
       # BEGIN DOCKER SETTINGS
       puppet_config:
@@ -102,6 +111,13 @@ outputs:
             path: /var/log/containers/nova
             state: directory
       upgrade_tasks:
+        - name: Set compute upgrade level to auto
+          tags: step1
+          ini_file:
+            str_replace:
+              template: "dest=/etc/nova/nova.conf section=upgrade_levels option=compute value=LEVEL"
+              params:
+                LEVEL: {get_param: UpgradeLevelNovaCompute}
         - name: Stop and disable nova_conductor service
           tags: step2
           service: name=openstack-nova-conductor state=stopped enabled=no

@@ -51,6 +51,9 @@ resources:
   ContainersCommon:
     type: ./containers-common.yaml
 
+  MySQLClient:
+    type: ../../puppet/services/database/mysql-client.yaml
+
   PankoApiPuppetBase:
     type: ../../puppet/services/panko-api.yaml
     properties:
@@ -71,7 +74,10 @@ outputs:
           - get_attr: [PankoApiPuppetBase, role_data, config_settings]
           - apache::default_vhost: false
       step_config: &step_config
-        get_attr: [PankoApiPuppetBase, role_data, step_config]
+        list_join:
+          - "\n"
+          - - {get_attr: [PankoApiPuppetBase, role_data, step_config]}
+            - {get_attr: [MySQLClient, role_data, step_config]}
       service_config_settings: {get_attr: [PankoApiPuppetBase, role_data, service_config_settings]}
       # BEGIN DOCKER SETTINGS #
       puppet_config:
@@ -110,6 +116,7 @@ outputs:
               list_concat:
                 - {get_attr: [ContainersCommon, volumes]}
                 -
+                  - /var/lib/config-data/panko/etc/my.cnf.d/tripleo.cnf:/etc/my.cnf.d/tripleo.cnf:ro
                   - /var/lib/config-data/panko/etc/panko:/etc/panko:ro
                   - /var/log/containers/panko:/var/log/panko
             command: "/usr/bin/bootstrap_host_exec panko_api su panko -s /bin/bash -c '/usr/bin/panko-dbsync'"
