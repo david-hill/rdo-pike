@@ -82,10 +82,12 @@
     - OS::TripleO::Services::ManilaApi
     - OS::TripleO::Services::ManilaScheduler
     - OS::TripleO::Services::ManilaBackendGeneric
+    - OS::TripleO::Services::ManilaBackendIsilon
     - OS::TripleO::Services::ManilaBackendNetapp
     - OS::TripleO::Services::ManilaBackendUnity
     - OS::TripleO::Services::ManilaBackendCephFs
     - OS::TripleO::Services::ManilaBackendVNX
+    - OS::TripleO::Services::ManilaBackendVMAX
     - OS::TripleO::Services::ManilaShare
     - OS::TripleO::Services::AodhApi
     - OS::TripleO::Services::AodhEvaluator
@@ -131,6 +133,7 @@
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
     - OS::TripleO::Services::NeutronSriovAgent
+    - OS::TripleO::Services::NeutronSriovHostConfig
     - OS::TripleO::Services::OpenDaylightOvs
     - OS::TripleO::Services::SensuClient
     - OS::TripleO::Services::FluentdClient

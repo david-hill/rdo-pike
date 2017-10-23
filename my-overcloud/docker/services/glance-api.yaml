@@ -44,6 +44,10 @@ parameters:
     description: >
       When using GlanceBackend 'file', mount NFS share for image storage.
     type: boolean
+  UpgradeRemoveUnusedPackages:
+    default: false
+    description: Remove package if the service is being disabled during upgrade
+    type: boolean
 
 conditions:
 
@@ -78,6 +82,8 @@ outputs:
         map_merge:
           - get_attr: [GlanceApiPuppetBase, role_data, config_settings]
           - glance::api::sync_db: false
+      logging_source: {get_attr: [GlanceApiPuppetBase, role_data, logging_source]}
+      logging_groups: {get_attr: [GlanceApiPuppetBase, role_data, logging_groups]}
       step_config: &step_config
         list_join:
           - "\n"
@@ -118,6 +124,7 @@ outputs:
             user: root
             volumes:
               - /var/log/containers/glance:/var/log/glance
+              - /var/log/containers/httpd/glance-api:/var/log/httpd
             command: ['/bin/bash', '-c', 'chown -R glance:glance /var/log/glance']
         step_3:
           glance_api_db_sync:
@@ -133,6 +140,7 @@ outputs:
                   - /var/lib/kolla/config_files/glance_api.json:/var/lib/kolla/config_files/config.json
                   - /var/lib/config-data/puppet-generated/glance_api/:/var/lib/kolla/config_files/src:ro
                   - /var/log/containers/glance:/var/log/glance
+                  - /var/log/containers/httpd/glance-api:/var/log/httpd
                   - /etc/ceph:/var/lib/kolla/config_files/src-ceph:ro
                   -
                     if:
@@ -176,8 +184,11 @@ outputs:
       host_prep_tasks:
         - name: create persistent logs directory
           file:
-            path: /var/log/containers/glance
+            path: "{{ item }}"
             state: directory
+          with_items:
+            - /var/log/containers/glance
+            - /var/log/containers/httpd/glance-api
         - name: ensure ceph configurations exist
           file:
             path: /etc/ceph
@@ -186,5 +197,10 @@ outputs:
         - name: Stop and disable glance_api service
           tags: step2
           service: name=openstack-glance-api state=stopped enabled=no
+        - name: Remove openstack-glance package if operator requests it
+          yum: name=openstack-glance state=removed
+          tags: step2
+          ignore_errors: True
+          when: {get_param: UpgradeRemoveUnusedPackages}
       metadata_settings:
         get_attr: [GlanceApiPuppetBase, role_data, metadata_settings]

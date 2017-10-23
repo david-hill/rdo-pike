@@ -39,6 +39,10 @@ parameters:
   EnableInternalTLS:
     type: boolean
     default: false
+  UpgradeRemoveUnusedPackages:
+    default: false
+    description: Remove package if the service is being disabled during upgrade
+    type: boolean
 
 conditions:
 
@@ -71,6 +75,8 @@ outputs:
         map_merge:
           - get_attr: [NovaPlacementBase, role_data, config_settings]
           - apache::default_vhost: false
+      logging_source: {get_attr: [NovaPlacementBase, role_data, logging_source]}
+      logging_groups: {get_attr: [NovaPlacementBase, role_data, logging_groups]}
       step_config: &step_config
         list_join:
           - "\n"
@@ -111,6 +117,7 @@ outputs:
                   - /var/lib/kolla/config_files/nova_placement.json:/var/lib/kolla/config_files/config.json:ro
                   - /var/lib/config-data/puppet-generated/nova_placement/:/var/lib/kolla/config_files/src:ro
                   - /var/log/containers/nova:/var/log/nova
+                  - /var/log/containers/httpd/nova-placement:/var/log/httpd
                   -
                     if:
                       - internal_tls_enabled
@@ -128,9 +135,18 @@ outputs:
       host_prep_tasks:
         - name: create persistent logs directory
           file:
-            path: /var/log/containers/nova
+            path: "{{ item }}"
             state: directory
+          with_items:
+            - /var/log/containers/nova
+            - /var/log/containers/httpd/nova-placement
       upgrade_tasks:
         - name: Stop and disable nova_placement service (running under httpd)
           tags: step2
           service: name=httpd state=stopped enabled=no
+        - name: Remove httpd package if operator requests it
+          yum: name=httpd state=removed
+          tags: step2
+          ignore_errors: True
+          when: {get_param: UpgradeRemoveUnusedPackages}
+

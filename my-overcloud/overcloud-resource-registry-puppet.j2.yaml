@@ -152,6 +152,7 @@ resource_registry:
   # can be the same as NeutronCorePlugin but some vendors install different
   # things where VMs run
   OS::TripleO::Services::ComputeNeutronCorePlugin: puppet/services/neutron-plugin-ml2.yaml
+  OS::TripleO::Services::ComputeNeutronCorePluginNuage: puppet/services/neutron-compute-plugin-nuage.yaml
   # Neutron Core Plugin Vendors (these typically override NeutronCorePlugin)
   OS::TripleO::Services::NeutronCorePluginML2OVN: puppet/services/neutron-plugin-ml2-ovn.yaml
   OS::TripleO::Services::NeutronCorePluginPlumgrid: puppet/services/neutron-plugin-plumgrid.yaml
@@ -169,6 +170,7 @@ resource_registry:
   OS::TripleO::Services::Pacemaker: OS::Heat::None
   OS::TripleO::Services::PacemakerRemote: OS::Heat::None
   OS::TripleO::Services::NeutronSriovAgent: OS::Heat::None
+  OS::TripleO::Services::NeutronSriovHostConfig: OS::Heat::None
   OS::TripleO::Services::RabbitMQ: puppet/services/rabbitmq.yaml
   OS::TripleO::Services::Qdr: OS::Heat::None
   OS::TripleO::Services::HAproxy: puppet/services/haproxy.yaml
@@ -231,8 +233,10 @@ resource_registry:
   OS::TripleO::Services::ManilaScheduler: OS::Heat::None
   OS::TripleO::Services::ManilaShare: OS::Heat::None
   OS::TripleO::Services::ManilaBackendGeneric: OS::Heat::None
+  OS::TripleO::Services::ManilaBackendIsilon: OS::Heat::None
   OS::TripleO::Services::ManilaBackendNetapp: OS::Heat::None
   OS::TripleO::Services::ManilaBackendUnity: OS::Heat::None
+  OS::TripleO::Services::ManilaBackendVMAX: OS::Heat::None
   OS::TripleO::Services::ManilaBackendCephFs: OS::Heat::None
   OS::TripleO::Services::ManilaBackendVNX: OS::Heat::None
   OS::TripleO::Services::ComputeNeutronL3Agent: OS::Heat::None
@@ -254,6 +258,7 @@ resource_registry:
   OS::TripleO::Services::IronicApi: OS::Heat::None
   OS::TripleO::Services::IronicConductor: OS::Heat::None
   OS::TripleO::Services::IronicInspector: OS::Heat::None
+  OS::TripleO::Services::IronicPxe: OS::Heat::None
   OS::TripleO::Services::NovaIronic: OS::Heat::None
   OS::TripleO::Services::TripleoPackages: puppet/services/tripleo-packages.yaml
   OS::TripleO::Services::TripleoFirewall: puppet/services/tripleo-firewall.yaml
@@ -267,6 +272,7 @@ resource_registry:
   OS::TripleO::Services::CinderBackendDellPs: OS::Heat::None
   OS::TripleO::Services::CinderBackendDellSc: OS::Heat::None
   OS::TripleO::Services::CinderBackendDellEMCUnity: OS::Heat::None
+  OS::TripleO::Services::CinderBackendDellEMCVMAXISCSI: OS::Heat::None
   OS::TripleO::Services::CinderBackendNetApp: OS::Heat::None
   OS::TripleO::Services::CinderBackendScaleIO: OS::Heat::None
   OS::TripleO::Services::CinderBackendVRTSHyperScale: OS::Heat::None

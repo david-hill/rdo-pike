@@ -26,6 +26,7 @@ import sys
 import subprocess
 import sys
 import tempfile
+import time
 import multiprocessing
 
 logger = None
@@ -59,10 +60,23 @@ def short_hostname():
 
 def pull_image(name):
     log.info('Pulling image: %s' % name)
-    subproc = subprocess.Popen(['/usr/bin/docker', 'pull', name],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    cmd_stdout, cmd_stderr = subproc.communicate()
+    retval = -1
+    count = 0
+    while retval != 0:
+        count += 1
+        subproc = subprocess.Popen(['/usr/bin/docker', 'pull', name],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+
+        cmd_stdout, cmd_stderr = subproc.communicate()
+        retval = subproc.returncode
+        if retval != 0:
+            time.sleep(3)
+            log.warning('docker pull failed: %s' % cmd_stderr)
+            log.warning('retrying pulling image: %s' % name)
+        if count >= 5:
+            log.error('Failed to pull image: %s' % name)
+            break
     if cmd_stdout:
         log.debug(cmd_stdout)
     if cmd_stderr:
@@ -257,7 +271,7 @@ def mp_puppet_config((config_volume, puppet_tags, manifest, config_image, volume
                 '--volume', '%s:/etc/config.pp:ro' % tmp_man.name,
                 '--volume', '/etc/puppet/:/tmp/puppet-etc/:ro',
                 '--volume', '/usr/share/openstack-puppet/modules/:/usr/share/openstack-puppet/modules/:ro',
-                '--volume', '/var/lib/config-data/:/var/lib/config-data/:rw',
+                '--volume', '%s:/var/lib/config-data/:rw' % os.environ.get('CONFIG_VOLUME_PREFIX', '/var/lib/config-data'),
                 '--volume', 'tripleo_logs:/var/log/tripleo/',
                 # Syslog socket for puppet logs
                 '--volume', '/dev/log:/dev/log',
@@ -366,6 +380,7 @@ for infile in infiles:
 
     outfile = os.path.join(os.path.dirname(infile), "hashed-" + os.path.basename(infile))
     with open(outfile, 'w') as out_f:
+        os.chmod(out_f.name, 0600)
         json.dump(infile_data, out_f)
 
 if not success:

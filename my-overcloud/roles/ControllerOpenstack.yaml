@@ -42,7 +42,6 @@
     - OS::TripleO::Services::CinderVolume
     - OS::TripleO::Services::Collectd
     - OS::TripleO::Services::Congress
-    - OS::TripleO::Services::Clustercheck
     - OS::TripleO::Services::Docker
     - OS::TripleO::Services::Ec2Api
     - OS::TripleO::Services::Etcd
@@ -59,6 +58,7 @@
     - OS::TripleO::Services::Horizon
     - OS::TripleO::Services::IronicApi
     - OS::TripleO::Services::IronicConductor
+    - OS::TripleO::Services::IronicPxe
     - OS::TripleO::Services::Iscsid
     - OS::TripleO::Services::Keepalived
     - OS::TripleO::Services::Kernel
@@ -66,14 +66,20 @@
     - OS::TripleO::Services::ManilaApi
     - OS::TripleO::Services::ManilaBackendCephFs
     - OS::TripleO::Services::ManilaBackendGeneric
+    - OS::TripleO::Services::ManilaBackendIsilon
     - OS::TripleO::Services::ManilaBackendNetapp
     - OS::TripleO::Services::ManilaBackendUnity
     - OS::TripleO::Services::ManilaBackendVNX
+    - OS::TripleO::Services::ManilaBackendVMAX
     - OS::TripleO::Services::ManilaScheduler
     - OS::TripleO::Services::ManilaShare
     - OS::TripleO::Services::Memcached
     - OS::TripleO::Services::MongoDb
     - OS::TripleO::Services::MySQLClient
+    - OS::TripleO::Services::NeutronApi
+    - OS::TripleO::Services::NeutronBgpVpnApi
+    - OS::TripleO::Services::NeutronCorePlugin
+    - OS::TripleO::Services::NeutronL2gwApi
     - OS::TripleO::Services::NovaApi
     - OS::TripleO::Services::NovaConductor
     - OS::TripleO::Services::NovaConsoleauth

@@ -12,17 +12,12 @@ resource_registry:
   OS::TripleO::Services::CephClient: ../../docker/services/ceph-ansible/ceph-client.yaml
   OS::TripleO::Services::PankoApi: ../../docker/services/panko-api.yaml
   OS::TripleO::Services::Collectd: ../../docker/services/collectd.yaml
-  OS::TripleO::Services::Tacker: ../../docker/services/tacker.yaml
   OS::TripleO::Services::Congress: ../../docker/services/congress.yaml
-  # TODO fluentd is being containerized: https://review.openstack.org/#/c/467072/
+  # FIXME(mandre) fluentd container image missing from tripleomaster registry
+  # https://bugs.launchpad.net/tripleo/+bug/1721723
+  # OS::TripleO::Services::FluentdClient: ../../docker/services/fluentd-client.yaml
   OS::TripleO::Services::FluentdClient: ../../puppet/services/logging/fluentd-client.yaml
   OS::TripleO::Services::SensuClient: ../../docker/services/sensu-client.yaml
-  # NOTE: This is needed because of upgrades from Ocata to Pike. We
-  # deploy the initial environment with Ocata templates, and
-  # overcloud-resource-registry.yaml there doesn't have this Docker
-  # mapping at all. After we stop CI'ing Ocata->Pike upgrade, we can
-  # remove this.
-  OS::TripleO::Services::Docker: OS::Heat::None
   # Some infra instances don't pass the ping test but are otherwise working.
   # Since the OVB jobs also test this functionality we can shut it off here.
   OS::TripleO::AllNodes::Validation: ../common/all-nodes-validation-disabled.yaml
@@ -30,6 +25,7 @@ resource_registry:
 
 parameter_defaults:
   ControllerServices:
+    - OS::TripleO::Services::Clustercheck
     - OS::TripleO::Services::Docker
     - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Keystone
@@ -86,7 +82,6 @@ parameter_defaults:
     - OS::TripleO::Services::CinderScheduler
     - OS::TripleO::Services::CinderVolume
     - OS::TripleO::Services::Collectd
-    - OS::TripleO::Services::Tacker
     - OS::TripleO::Services::Congress
     - OS::TripleO::Services::TripleoPackages
     - OS::TripleO::Services::TripleoFirewall
@@ -107,6 +102,7 @@ parameter_defaults:
       - /dev/loop3
     journal_size: 512
     journal_collocation: true
+    osd_scenario: collocated
   CephAnsibleExtraConfig:
     ceph_conf_overrides:
       global:
@@ -124,6 +120,7 @@ parameter_defaults:
   CephAdminKey: 'AQDLOh1VgEp6FRAAFzT7Zw+Y9V6JJExQAsRnRQ=='
   CephClientKey: 'AQC+vYNXgDAgAhAAc8UoYt+OTz5uhV7ItLdwUw=='
   CephPoolDefaultSize: 1
+  DockerCephDaemonImage: ceph/daemon:tag-build-ceph-dfg-jewel-centos-7
   NovaEnableRbdBackend: true
   CinderEnableRbdBackend: true
   CinderBackupBackend: ceph

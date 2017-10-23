@@ -30,9 +30,9 @@ resource_registry:
   OS::TripleO::Services::HAproxy: ../docker/services/haproxy.yaml
   OS::TripleO::Services::MySQL: ../docker/services/database/mysql.yaml
   OS::TripleO::Services::RabbitMQ: ../docker/services/rabbitmq.yaml
-  OS::TripleO::Services::MongoDb: ../docker/services/database/mongodb.yaml
   OS::TripleO::Services::Redis: ../docker/services/database/redis.yaml
   OS::TripleO::Services::Memcached: ../docker/services/memcached.yaml
+  OS::TripleO::Services::Sshd: ../docker/services/sshd.yaml
   OS::TripleO::Services::SwiftProxy: ../docker/services/swift-proxy.yaml
   OS::TripleO::Services::SwiftStorage: ../docker/services/swift-storage.yaml
   OS::TripleO::Services::SwiftRingBuilder: ../docker/services/swift-ringbuilder.yaml
@@ -57,3 +57,7 @@ resource_registry:
   # OS::TripleO::Services::CinderScheduler: ../docker/services/cinder-scheduler.yaml
   # OS::TripleO::Services::CinderBackup: ../docker/services/cinder-backup.yaml
   # OS::TripleO::Services::CinderVolume: ../docker/services/cinder-volume.yaml
+  #
+  # If SR-IOV is enabled on the compute nodes, it will need the SR-IOV
+  # host configuration.
+  OS::TripleO::Services::NeutronSriovHostConfig: OS::Heat::None

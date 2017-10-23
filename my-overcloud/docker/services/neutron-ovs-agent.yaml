@@ -36,6 +36,10 @@ parameters:
     description: Mapping of service endpoint -> protocol. Typically set
                  via parameter_defaults in the resource registry.
     type: json
+  UpgradeRemoveUnusedPackages:
+    default: false
+    description: Remove package if the service is being disabled during upgrade
+    type: boolean
 
 resources:
 
@@ -58,6 +62,8 @@ outputs:
     value:
       service_name: {get_attr: [NeutronOvsAgentBase, role_data, service_name]}
       config_settings: {get_attr: [NeutronOvsAgentBase, role_data, config_settings]}
+      logging_source: {get_attr: [NeutronOvsAgentBase, role_data, logging_source]}
+      logging_groups: {get_attr: [NeutronOvsAgentBase, role_data, logging_groups]}
       step_config: &step_config
         get_attr: [NeutronOvsAgentBase, role_data, step_config]
       puppet_config:
@@ -136,3 +142,8 @@ outputs:
         - name: Stop and disable neutron_ovs_agent service
           tags: step2
           service: name=neutron-openvswitch-agent state=stopped enabled=no
+        - name: Remove openstack-neutron-openvswitch package if operator requests it
+          yum: name=openstack-neutron-openvswitch state=removed
+          tags: step2
+          ignore_errors: True
+          when: {get_param: UpgradeRemoveUnusedPackages}
